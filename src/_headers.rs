@@ -14,6 +14,19 @@ lazy_static! {
     static ref FIELD_VALUE_RE: Regex = Regex::new(&format!(r"^{}$", *FIELD_VALUE)).unwrap();
 }
 
+fn trim_ascii_whitespace(value: &[u8]) -> &[u8] {
+    let start = value
+        .iter()
+        .position(|byte| !byte.is_ascii_whitespace())
+        .unwrap_or(value.len());
+    let end = value
+        .iter()
+        .rposition(|byte| !byte.is_ascii_whitespace())
+        .map(|idx| idx + 1)
+        .unwrap_or(start);
+    &value[start..end]
+}
+
 /// HTTP header collection.
 ///
 /// Header names are stored in normalized lowercase form for lookup, while the
@@ -120,13 +133,7 @@ pub fn normalize_and_validate(
         if name == b"content-length" {
             let lengths: HashSet<Vec<u8>> = value
                 .split(|&b| b == b',')
-                .map(|length| {
-                    std::str::from_utf8(length)
-                        .unwrap()
-                        .trim()
-                        .as_bytes()
-                        .to_vec()
-                })
+                .map(|length| trim_ascii_whitespace(length).to_vec())
                 .collect();
             if lengths.len() != 1 {
                 return Err(ProtocolError::LocalProtocolError(
@@ -182,9 +189,9 @@ pub fn get_comma_header(headers: &Headers, name: &[u8]) -> Vec<Vec<u8>> {
     for (found_name, found_value) in headers.iter() {
         if found_name == name {
             for found_split_value in found_value.to_ascii_lowercase().split(|&b| b == b',') {
-                let found_split_value = std::str::from_utf8(found_split_value).unwrap().trim();
+                let found_split_value = trim_ascii_whitespace(found_split_value);
                 if !found_split_value.is_empty() {
-                    out.push(found_split_value.as_bytes().to_vec());
+                    out.push(found_split_value.to_vec());
                 }
             }
         }
@@ -229,6 +236,25 @@ mod tests {
     #[test]
     fn test_headers_new_rejects_invalid_input() {
         assert!(Headers::new(vec![(b"bad header".to_vec(), b"value".to_vec())]).is_err());
+    }
+
+    #[test]
+    fn test_non_utf8_comma_headers_do_not_panic() {
+        assert_eq!(
+            normalize_and_validate(vec![(b"Content-Length".to_vec(), b"\xff".to_vec())], true)
+                .unwrap_err(),
+            ProtocolError::LocalProtocolError("bad Content-Length".into())
+        );
+
+        let headers = normalize_and_validate(
+            vec![(b"Connection".to_vec(), b"close, \xff".to_vec())],
+            true,
+        )
+        .unwrap();
+        assert_eq!(
+            get_comma_header(&headers, b"connection"),
+            vec![b"close".to_vec(), b"\xff".to_vec()]
+        );
     }
 
     #[test]

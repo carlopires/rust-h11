@@ -127,7 +127,15 @@ impl ConnectionState {
     ) -> Result<(), ProtocolError> {
         let mut _event_type = event_type;
         if let Some(server_switch_event) = server_switch_event {
-            assert_eq!(role, Role::Server);
+            if role != Role::Server {
+                return Err(ProtocolError::LocalProtocolError(
+                    format!(
+                        "Received server switch event {:?} for role {:?}",
+                        server_switch_event, role
+                    )
+                    .into(),
+                ));
+            }
             if !self.pending_switch_proposals.contains(&server_switch_event) {
                 return Err(ProtocolError::LocalProtocolError(
                     format!(
@@ -145,10 +153,15 @@ impl ConnectionState {
                 (EventType::InformationalResponse, Switch::SwitchUpgrade) => {
                     EventType::InformationalResponseSwitchUpgrade
                 }
-                _ => panic!(
-                    "Can't handle event type {:?} when role={:?} and state={:?}",
-                    _event_type, role, self.states[&role]
-                ),
+                _ => {
+                    return Err(ProtocolError::LocalProtocolError(
+                        format!(
+                            "Can't handle event type {:?} with server switch {:?} when role={:?} and state={:?}",
+                            _event_type, server_switch_event, role, self.states[&role]
+                        )
+                        .into(),
+                    ))
+                }
             };
         }
         if server_switch_event.is_none() && _event_type == EventType::NormalResponse {
@@ -156,7 +169,11 @@ impl ConnectionState {
         }
         self._fire_event_triggered_transitions(role, _event_type)?;
         if _event_type == EventType::Request {
-            assert_eq!(role, Role::Client);
+            if role != Role::Client {
+                return Err(ProtocolError::LocalProtocolError(
+                    format!("Received request event for role {:?}", role).into(),
+                ));
+            }
             self._fire_event_triggered_transitions(Role::Server, EventType::RequestClient)?
         }
         self._fire_state_triggered_transitions();
@@ -602,6 +619,16 @@ mod tests {
             cs.process_event(Role::Server, EventType::NormalResponse, Some(server_switch))
                 .expect_err("Expected LocalProtocolError");
         }
+    }
+
+    #[test]
+    fn test_connection_state_invalid_switch_event_returns_error() {
+        let mut cs = ConnectionState::new();
+        cs.process_client_switch_proposal(Switch::SwitchUpgrade);
+        cs.process_event(Role::Client, EventType::Request, None)
+            .unwrap();
+        cs.process_event(Role::Server, EventType::Data, Some(Switch::SwitchUpgrade))
+            .expect_err("Expected LocalProtocolError");
     }
 
     #[test]
