@@ -4,6 +4,9 @@ Inspired by [python-h11](https://github.com/python-hyper/h11).
 
 It's a "bring-your-own-I/O" library; h11 contains no IO code whatsoever. This means you can hook h11 up to your favorite network API, and that could be anything you want: synchronous, threaded, asynchronous, or your own implementation of [RFC 6214](https://www.rfc-editor.org/rfc/rfc6214) -- h11 won't judge you.
 
+See [the user guide](docs/user-guide.md) for client/server loops, bodies,
+keep-alive, `100-continue`, protocol switching, and error handling.
+
 ## Install
 
 ```bash

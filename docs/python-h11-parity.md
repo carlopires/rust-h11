@@ -98,7 +98,7 @@ Statuses:
 
 | Python h11 quality marker | Rust status | Notes |
 | --- | --- | --- |
-| Extensive API documentation | partial | Public rustdoc covers the exported API surface; longer guide pages are still missing. |
+| Extensive API documentation | partial | Public rustdoc and a user guide cover the exported API surface and common flows; more specialized cookbook examples are still missing. |
 | Exhaustive test suite / coverage target | partial | Unit and integration tests exist; no coverage target or branch coverage gate. |
 | Fuzzing infrastructure | partial | cargo-fuzz harnesses and seed corpora exist; scheduled runs and crash regression promotion are still missing. |
 | Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons cover core flows, malformed start lines, pipelining, `100-continue`, CONNECT, and Upgrade. Broader generated and minimized fixtures are still missing. |
@@ -106,8 +106,7 @@ Statuses:
 
 ## Initial Implementation Backlog
 
-1. Audit remaining public panic paths and convert them to protocol errors.
-2. Add longer guide pages for clients, servers, bodies, keep-alive, and protocol switching.
-3. Add generated/minimized Python h11 fixtures for additional malformed body and EOF cases.
-4. Decide whether `PRODUCT_ID` belongs in the Rust public API.
-5. Benchmark parser hot paths before replacing regex-based parsing.
+1. Add generated/minimized Python h11 fixtures for additional malformed body and EOF cases.
+2. Decide whether `PRODUCT_ID` belongs in the Rust public API.
+3. Benchmark parser hot paths before replacing regex-based parsing.
+4. Add specialized cookbook examples as API gaps are resolved.
