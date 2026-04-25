@@ -67,6 +67,74 @@ CASES = [
         "role": "CLIENT",
         "chunks": [b"HTTP/1.0 200 OK\r\n\r\nhello", b""],
     },
+    {
+        "name": "server_pipelined_requests",
+        "role": "SERVER",
+        "include_terminal": True,
+        "chunks": [
+            b"GET /one HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"\r\n"
+            b"GET /two HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "server_expect_100_continue_pending",
+        "role": "SERVER",
+        "include_terminal": True,
+        "capture_waiting_for_100_continue": True,
+        "chunks": [
+            b"POST /upload HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Expect: 100-continue\r\n"
+            b"Content-Length: 5\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "client_informational_then_final",
+        "role": "CLIENT",
+        "setup_request": {
+            "method": b"GET",
+            "target": b"/",
+            "headers": [(b"Host", b"example.com")],
+        },
+        "chunks": [
+            b"HTTP/1.1 100 Continue\r\n"
+            b"\r\n"
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Length: 0\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "server_connect_request",
+        "role": "SERVER",
+        "chunks": [b"CONNECT example.com:443 HTTP/1.1\r\nHost: example.com\r\n\r\n"],
+    },
+    {
+        "name": "server_upgrade_request",
+        "role": "SERVER",
+        "chunks": [
+            b"GET /chat HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Upgrade: websocket\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "server_malformed_request_line",
+        "role": "SERVER",
+        "chunks": [b"GET / HTTP/1.1 BAD\r\nHost: example.com\r\n\r\n"],
+    },
+    {
+        "name": "client_malformed_response_status_line",
+        "role": "CLIENT",
+        "chunks": [b"HTTP/1.1 OK\r\n\r\n"],
+    },
 ]
 
 
@@ -124,30 +192,79 @@ def event_json(event: object) -> dict[str, object]:
     raise TypeError(f"unsupported event: {event!r}")
 
 
+def error_json(error: h11.RemoteProtocolError) -> dict[str, object]:
+    return {
+        "type": "RemoteProtocolError",
+        "code": error.error_status_hint,
+    }
+
+
+def setup_request_json(request: dict[str, object]) -> dict[str, object]:
+    return {
+        "method_hex": hex_bytes(request["method"]),
+        "target_hex": hex_bytes(request["target"]),
+        "headers": [
+            {"name_hex": hex_bytes(name), "value_hex": hex_bytes(value)}
+            for name, value in request["headers"]
+        ],
+    }
+
+
 def run_case(case: dict[str, object]) -> dict[str, object]:
     role = getattr(h11, str(case["role"]))
     conn = h11.Connection(role)
     events = []
+    errored = False
+    include_terminal = bool(case.get("include_terminal", False))
+    setup_request = case.get("setup_request")
+
+    if setup_request is not None:
+        conn.send(
+            h11.Request(
+                method=setup_request["method"],
+                target=setup_request["target"],
+                headers=setup_request["headers"],
+            )
+        )
+        conn.send(h11.EndOfMessage())
 
     for chunk in case["chunks"]:
         conn.receive_data(chunk)
         for _ in range(32):
-            event = conn.next_event()
+            try:
+                event = conn.next_event()
+            except h11.RemoteProtocolError as error:
+                events.append(error_json(error))
+                errored = True
+                break
             if event in (h11.NEED_DATA, h11.PAUSED):
+                if include_terminal:
+                    events.append(event_json(event))
                 break
             events.append(event_json(event))
             if isinstance(event, h11.ConnectionClosed):
                 break
         else:
             raise RuntimeError(f"fixture did not quiesce: {case['name']}")
+        if errored:
+            break
 
-    return {
+    fixture = {
         "name": case["name"],
         "python_h11_version": h11.__version__,
         "role": case["role"],
         "chunks_hex": [hex_bytes(chunk) for chunk in case["chunks"]],
         "events": events,
     }
+    if include_terminal:
+        fixture["include_terminal"] = True
+    if setup_request is not None:
+        fixture["setup_request"] = setup_request_json(setup_request)
+    if case.get("capture_waiting_for_100_continue", False):
+        fixture["they_are_waiting_for_100_continue"] = (
+            conn.they_are_waiting_for_100_continue
+        )
+    return fixture
 
 
 def main() -> None:

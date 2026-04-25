@@ -1,5 +1,7 @@
-use h11::{Connection, Event, Role};
+use h11::{Connection, EndOfMessage, Event, Headers, ProtocolError, Request, Role};
 use serde_json::Value;
+use std::fs;
+use std::path::PathBuf;
 
 fn decode_hex(hex: &str) -> Vec<u8> {
     assert_eq!(hex.len() % 2, 0, "hex input must have an even length");
@@ -70,6 +72,17 @@ fn event_json(event: Event) -> Value {
     }
 }
 
+fn error_json(error: ProtocolError) -> Value {
+    match error {
+        ProtocolError::RemoteProtocolError(error) => {
+            serde_json::json!({ "type": "RemoteProtocolError", "code": error.code })
+        }
+        ProtocolError::LocalProtocolError(error) => {
+            serde_json::json!({ "type": "LocalProtocolError", "code": error.code })
+        }
+    }
+}
+
 fn role_from_fixture(value: &Value) -> Role {
     match value["role"].as_str().unwrap() {
         "CLIENT" => Role::Client,
@@ -78,70 +91,104 @@ fn role_from_fixture(value: &Value) -> Role {
     }
 }
 
+fn headers_from_json(value: &Value) -> Headers {
+    Headers::new(
+        value
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|header| {
+                (
+                    decode_hex(header["name_hex"].as_str().unwrap()),
+                    decode_hex(header["value_hex"].as_str().unwrap()),
+                )
+            })
+            .collect::<Vec<_>>(),
+    )
+    .unwrap()
+}
+
+fn apply_fixture_setup(conn: &mut Connection, fixture: &Value) {
+    if let Some(setup_request) = fixture.get("setup_request") {
+        let request = Request::new_http11(
+            decode_hex(setup_request["method_hex"].as_str().unwrap()),
+            headers_from_json(&setup_request["headers"]),
+            decode_hex(setup_request["target_hex"].as_str().unwrap()),
+        )
+        .unwrap();
+        conn.send(request.into()).unwrap();
+        conn.send(EndOfMessage::default().into()).unwrap();
+    }
+}
+
 fn rust_events_for_fixture(fixture: &Value) -> Vec<Value> {
     let mut conn = Connection::new(role_from_fixture(fixture), None);
     let mut events = Vec::new();
+    let include_terminal = fixture["include_terminal"].as_bool().unwrap_or(false);
+    apply_fixture_setup(&mut conn, fixture);
 
     for chunk in fixture["chunks_hex"].as_array().unwrap() {
         conn.receive_data(&decode_hex(chunk.as_str().unwrap()))
             .unwrap();
         loop {
-            match conn.next_event().unwrap() {
-                Event::NeedData() | Event::Paused() => break,
-                event @ Event::ConnectionClosed(_) => {
+            match conn.next_event() {
+                Ok(event @ (Event::NeedData() | Event::Paused())) => {
+                    if include_terminal {
+                        events.push(event_json(event));
+                    }
+                    break;
+                }
+                Ok(event @ Event::ConnectionClosed(_)) => {
                     events.push(event_json(event));
                     break;
                 }
-                event => events.push(event_json(event)),
+                Ok(event) => events.push(event_json(event)),
+                Err(error) => {
+                    events.push(error_json(error));
+                    return events;
+                }
             }
         }
+    }
+
+    if let Some(expected) = fixture["they_are_waiting_for_100_continue"].as_bool() {
+        assert_eq!(
+            conn.get_they_are_waiting_for_100_continue(),
+            expected,
+            "{fixture:#?}"
+        );
     }
 
     events
 }
 
-fn assert_fixture_matches_python_h11(fixture_json: &str) {
+fn assert_fixture_matches_python_h11(fixture_json: &str, fixture_name: &str) {
     let fixture: Value = serde_json::from_str(fixture_json).unwrap();
     let expected = fixture["events"].as_array().unwrap().clone();
-    assert_eq!(rust_events_for_fixture(&fixture), expected, "{fixture:#?}");
+    assert_eq!(
+        rust_events_for_fixture(&fixture),
+        expected,
+        "{fixture_name}: {fixture:#?}"
+    );
 }
 
 #[test]
-fn python_h11_server_get_empty() {
-    assert_fixture_matches_python_h11(include_str!("fixtures/python-h11/server_get_empty.json"));
-}
+fn python_h11_fixtures_match() {
+    let mut fixtures: Vec<PathBuf> = fs::read_dir(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/python-h11"
+    ))
+    .unwrap()
+    .map(|entry| entry.unwrap().path())
+    .filter(|path| {
+        path.extension()
+            .is_some_and(|extension| extension == "json")
+    })
+    .collect();
+    fixtures.sort();
 
-#[test]
-fn python_h11_server_post_content_length() {
-    assert_fixture_matches_python_h11(include_str!(
-        "fixtures/python-h11/server_post_content_length.json"
-    ));
-}
-
-#[test]
-fn python_h11_server_post_chunked_trailer() {
-    assert_fixture_matches_python_h11(include_str!(
-        "fixtures/python-h11/server_post_chunked_trailer.json"
-    ));
-}
-
-#[test]
-fn python_h11_client_response_content_length() {
-    assert_fixture_matches_python_h11(include_str!(
-        "fixtures/python-h11/client_response_content_length.json"
-    ));
-}
-
-#[test]
-fn python_h11_client_response_chunked_trailer() {
-    assert_fixture_matches_python_h11(include_str!(
-        "fixtures/python-h11/client_response_chunked_trailer.json"
-    ));
-}
-
-#[test]
-fn python_h11_client_http10_close_delimited() {
-    assert_fixture_matches_python_h11(include_str!(
-        "fixtures/python-h11/client_http10_close_delimited.json"
-    ));
+    for fixture in fixtures {
+        let fixture_json = fs::read_to_string(&fixture).unwrap();
+        assert_fixture_matches_python_h11(&fixture_json, &fixture.display().to_string());
+    }
 }
