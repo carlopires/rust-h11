@@ -18,16 +18,16 @@ Statuses:
 | Python h11 symbol | Rust equivalent | Status | Notes |
 | --- | --- | --- | --- |
 | `Connection` | `Connection` | partial | Core send/receive/state behavior exists. Rust API returns `Option<Vec<u8>>` from `send`; Python supports additional send ergonomics such as `combine`. |
-| `Request` | `Request` | partial | Fallible constructor exists. Rust constructor requires positional `Vec<u8>` values and explicit `http_version`; Python defaults to HTTP/1.1 and accepts `str`/bytes-like values. |
+| `Request` | `Request` | partial | Fallible constructor accepts borrowed byte-like values. `new_http11` provides the common HTTP/1.1 default; Rust still uses positional arguments instead of Python keyword-only construction. |
 | `InformationalResponse` | `Event::InformationalResponse(Response)` | partial | Represented as an enum variant, not a separate public event type with range-specific construction. |
-| `Response` | `Response` / `Event::NormalResponse` | partial | Fallible constructor exists, but final-response range is not separated at the type level. |
+| `Response` | `Response` / `Event::NormalResponse` | partial | Fallible constructor accepts borrowed byte-like values and `new_http11` provides the common HTTP/1.1 default, but final-response range is not separated at the type level. |
 | `Data` | `Data` | partial | Basic body chunks exist. Python supports sendfile-oriented data objects via `combine=False`; Rust currently requires owned `Vec<u8>`. |
 | `EndOfMessage` | `EndOfMessage` | same | End event and trailer headers exist. |
 | `ConnectionClosed` | `ConnectionClosed` | same | Close event exists. |
 | `ProtocolError` | `ProtocolError` | partial | Local/remote variants exist and implement standard Rust error traits; exception-style inheritance does not apply in Rust. |
 | `LocalProtocolError` | `LocalProtocolError` | partial | Exists with message and status code. |
 | `RemoteProtocolError` | `RemoteProtocolError` | partial | Exists with message and status code. |
-| `Headers` | `Headers` | partial | Normalization and raw casing preservation exist. Iteration clones values and construction ergonomics are narrower than Python. |
+| `Headers` | `Headers` | partial | Normalization and raw casing preservation exist. Constructors accept borrowed byte-like values, but iteration clones values. |
 | `PRODUCT_ID` | none | missing | Useful for default `User-Agent` / `Server` identification if this crate wants Python-style helper behavior. |
 
 ## Roles and States
@@ -70,8 +70,8 @@ Statuses:
 
 | Behavior | Rust status | Notes |
 | --- | --- | --- |
-| Accept `str`, bytes-like, and existing headers in event constructors | missing | Rust constructors currently require owned `Vec<u8>` and `Headers`. Add generic `TryIntoBytes` or explicit helper constructors. |
-| Default `http_version` to `b"1.1"` for manual events | missing | Rust constructors require explicit version. |
+| Accept `str`, bytes-like, and existing headers in event constructors | partial | Rust constructors accept `AsRef<[u8]>` inputs and existing `Headers`. They do not perform Python-style text encoding beyond byte copying. |
+| Default `http_version` to `b"1.1"` for manual events | partial | `new_http11` convenience constructors exist. The fully explicit constructors still require a version. |
 | Validate manually-created events at construction | partial | `Request::new` and `Response::new` validate; `Data`, `EndOfMessage`, and direct struct literals bypass checks. |
 | Preserve raw header casing while exposing lowercase lookup names | same | Implemented by `Headers`. |
 | Reject leading/trailing whitespace in header names | same | Implemented by validation. |
@@ -107,11 +107,10 @@ Statuses:
 ## Initial Implementation Backlog
 
 1. Add public rustdoc for every exported type and method.
-2. Add generic constructors for `Request`, `Response`, and `Headers`.
-3. Add explicit constructors for informational and final responses.
-4. Add Python h11 fixture generator and JSON event comparison tests.
-5. Expand RFC 9112 compliance notes into a section-by-section table.
-6. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
-7. Audit remaining public panic paths and convert them to protocol errors.
-8. Decide whether `PRODUCT_ID` belongs in the Rust public API.
-9. Benchmark parser hot paths before replacing regex-based parsing.
+2. Add explicit constructors for informational and final responses.
+3. Add Python h11 fixture generator and JSON event comparison tests.
+4. Expand RFC 9112 compliance notes into a section-by-section table.
+5. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
+6. Audit remaining public panic paths and convert them to protocol errors.
+7. Decide whether `PRODUCT_ID` belongs in the Rust public API.
+8. Benchmark parser hot paths before replacing regex-based parsing.
