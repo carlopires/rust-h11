@@ -1,0 +1,14 @@
+{
+  "chunks_hex": [
+    "485454502f312e3120323030204f4b0d0a5472616e736665722d456e636f64696e673a20677a69700d0a0d0a"
+  ],
+  "events": [
+    {
+      "code": 501,
+      "type": "RemoteProtocolError"
+    }
+  ],
+  "name": "client_unsupported_transfer_coding",
+  "python_h11_version": "0.16.0",
+  "role": "CLIENT"
+}

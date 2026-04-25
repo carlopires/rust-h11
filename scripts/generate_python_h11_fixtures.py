@@ -126,6 +126,119 @@ CASES = [
         ],
     },
     {
+        "name": "server_obs_fold_header",
+        "role": "SERVER",
+        "chunks": [
+            b"GET /folded HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"X-Folded: one\r\n"
+            b"\t two\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "client_obs_fold_header",
+        "role": "CLIENT",
+        "chunks": [
+            b"HTTP/1.1 200 OK\r\n"
+            b"X-Folded: one\r\n"
+            b"  two\r\n"
+            b"Content-Length: 0\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "server_duplicate_content_length_same",
+        "role": "SERVER",
+        "chunks": [
+            b"POST /upload HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Content-Length: 5\r\n"
+            b"Content-Length: 5\r\n"
+            b"\r\n"
+            b"hello"
+        ],
+    },
+    {
+        "name": "client_duplicate_content_length_same",
+        "role": "CLIENT",
+        "chunks": [
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Length: 5\r\n"
+            b"Content-Length: 5\r\n"
+            b"\r\n"
+            b"hello"
+        ],
+    },
+    {
+        "name": "server_duplicate_content_length_conflict",
+        "role": "SERVER",
+        "chunks": [
+            b"POST /upload HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Content-Length: 5\r\n"
+            b"Content-Length: 6\r\n"
+            b"\r\n"
+            b"hello"
+        ],
+    },
+    {
+        "name": "client_duplicate_content_length_conflict",
+        "role": "CLIENT",
+        "chunks": [
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Length: 5\r\n"
+            b"Content-Length: 6\r\n"
+            b"\r\n"
+            b"hello"
+        ],
+    },
+    {
+        "name": "server_unsupported_transfer_coding",
+        "role": "SERVER",
+        "chunks": [
+            b"POST /upload HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Transfer-Encoding: gzip\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "client_unsupported_transfer_coding",
+        "role": "CLIENT",
+        "chunks": [b"HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip\r\n\r\n"],
+    },
+    {
+        "name": "server_malformed_header_line",
+        "role": "SERVER",
+        "chunks": [
+            b"GET / HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Bad Header\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "client_malformed_header_line",
+        "role": "CLIENT",
+        "chunks": [b"HTTP/1.1 200 OK\r\nBad Header\r\n\r\n"],
+    },
+    {
+        "name": "server_continuation_header_at_start",
+        "role": "SERVER",
+        "chunks": [
+            b"GET / HTTP/1.1\r\n"
+            b"\tcontinued\r\n"
+            b"Host: example.com\r\n"
+            b"\r\n"
+        ],
+    },
+    {
+        "name": "client_continuation_header_at_start",
+        "role": "CLIENT",
+        "chunks": [b"HTTP/1.1 200 OK\r\n continued\r\nContent-Length: 0\r\n\r\n"],
+    },
+    {
         "name": "server_malformed_request_line",
         "role": "SERVER",
         "chunks": [b"GET / HTTP/1.1 BAD\r\nHost: example.com\r\n\r\n"],

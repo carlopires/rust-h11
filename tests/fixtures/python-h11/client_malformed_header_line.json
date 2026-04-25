@@ -1,0 +1,14 @@
+{
+  "chunks_hex": [
+    "485454502f312e3120323030204f4b0d0a426164204865616465720d0a0d0a"
+  ],
+  "events": [
+    {
+      "code": 400,
+      "type": "RemoteProtocolError"
+    }
+  ],
+  "name": "client_malformed_header_line",
+  "python_h11_version": "0.16.0",
+  "role": "CLIENT"
+}

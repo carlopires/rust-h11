@@ -1,0 +1,30 @@
+{
+  "chunks_hex": [
+    "485454502f312e3120323030204f4b0d0a582d466f6c6465643a206f6e650d0a202074776f0d0a436f6e74656e742d4c656e6774683a20300d0a0d0a"
+  ],
+  "events": [
+    {
+      "headers": [
+        {
+          "name_hex": "582d466f6c646564",
+          "value_hex": "6f6e652074776f"
+        },
+        {
+          "name_hex": "436f6e74656e742d4c656e677468",
+          "value_hex": "30"
+        }
+      ],
+      "http_version_hex": "312e31",
+      "reason_hex": "4f4b",
+      "status_code": 200,
+      "type": "NormalResponse"
+    },
+    {
+      "headers": [],
+      "type": "EndOfMessage"
+    }
+  ],
+  "name": "client_obs_fold_header",
+  "python_h11_version": "0.16.0",
+  "role": "CLIENT"
+}

@@ -101,11 +101,11 @@ Statuses:
 | Extensive API documentation | partial | Public rustdoc, a user guide, and compiled cookbook examples cover the exported API surface, common flows, pipelining, `100-continue`, and Upgrade handoff. |
 | Exhaustive test suite / coverage target | partial | Unit and integration tests exist; no coverage target or branch coverage gate. |
 | Fuzzing infrastructure | partial | cargo-fuzz harnesses and seed corpora exist; scheduled runs and crash regression promotion are still missing. |
-| Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons cover core flows, malformed start lines, pipelining, `100-continue`, CONNECT, Upgrade, malformed chunks, and EOF during bodies. Broader generated and minimized fixtures are still missing. |
+| Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons cover core flows, malformed start lines, pipelining, `100-continue`, CONNECT, Upgrade, obs-fold, duplicate `Content-Length`, unsupported transfer codings, malformed header lines, malformed chunks, and EOF during bodies. Broader generated and minimized fixtures should continue as new cases are found. |
 | No runtime dependencies outside standard library | partial | Runtime depends on `lazy_static` and `regex`. Parser benchmarks and a local baseline now cover representative hot paths before deciding whether byte parsers justify replacing regex. |
 
 ## Initial Implementation Backlog
 
-1. Add generated/minimized Python h11 fixtures as new malformed cases are found.
+1. Continue adding generated/minimized Python h11 fixtures as new malformed cases are found.
 2. Compare parser refactors against the documented performance baseline before replacing regex-based parsing.
 3. Add more cookbook examples as API gaps are resolved.
