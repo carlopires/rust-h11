@@ -87,7 +87,9 @@ impl Reader for IdleClientReader {
             }
             return Ok(None);
         }
-        let lines = lines.unwrap();
+        let Some(lines) = lines else {
+            return Ok(None);
+        };
         if lines.is_empty() {
             return Err(ProtocolError::LocalProtocolError(
                 ("no request line received".to_string(), 400).into(),
@@ -134,7 +136,9 @@ impl Reader for SendResponseServerReader {
             }
             return Ok(None);
         }
-        let lines = lines.unwrap();
+        let Some(lines) = lines else {
+            return Ok(None);
+        };
         if lines.is_empty() {
             return Err(ProtocolError::LocalProtocolError(
                 ("no response line received".to_string(), 400).into(),
@@ -265,11 +269,10 @@ impl Reader for ChunkedReader {
             }
         }
         if self.bytes_to_discard > 0 {
-            let data = buf.maybe_extract_at_most(self.bytes_to_discard);
-            if data.is_none() {
+            let Some(data) = buf.maybe_extract_at_most(self.bytes_to_discard) else {
                 return Ok(None);
-            }
-            self.bytes_to_discard -= data.unwrap().len();
+            };
+            self.bytes_to_discard -= data.len();
             if self.bytes_to_discard > 0 {
                 return Ok(None);
             }
@@ -286,10 +289,12 @@ impl Reader for ChunkedReader {
                         ))
                     }
                 };
-                self.bytes_in_chunk = match usize::from_str_radix(
-                    std::str::from_utf8(&matches["chunk_size"].to_vec()).unwrap(),
-                    16,
-                ) {
+                let chunk_size = std::str::from_utf8(&matches["chunk_size"]).map_err(|_| {
+                    ProtocolError::LocalProtocolError(
+                        format!("illegal chunk size: {:?}", &matches["chunk_size"]).into(),
+                    )
+                })?;
+                self.bytes_in_chunk = match usize::from_str_radix(chunk_size, 16) {
                     Ok(bytes_in_chunk) => bytes_in_chunk,
                     Err(_) => {
                         return Err(ProtocolError::LocalProtocolError(

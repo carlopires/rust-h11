@@ -433,14 +433,15 @@ impl Connection {
         if state == State::MightSwitchProtocol || state == State::SwitchedProtocol {
             return Ok(Event::Paused());
         }
-        let event = self
-            ._reader
-            .as_mut()
-            .unwrap()
-            .call(&mut self._receive_buffer)?;
+        let reader = self._reader.as_mut().ok_or_else(|| {
+            ProtocolError::RemoteProtocolError(
+                format!("No reader available for peer state {:?}", state).into(),
+            )
+        })?;
+        let event = reader.call(&mut self._receive_buffer)?;
         if event.is_none() {
             if self._receive_buffer.len() == 0 && self._receive_buffer_closed {
-                return self._reader.as_mut().unwrap().read_eof();
+                return reader.read_eof();
             }
         }
         Ok(event.unwrap_or(Event::NeedData()))
@@ -3653,6 +3654,17 @@ mod tests {
         assert!(matches!(
             c.receive_data(b"extra"),
             Err(ProtocolError::LocalProtocolError(_))
+        ));
+    }
+
+    #[test]
+    fn test_non_utf8_content_length_returns_protocol_error() {
+        let mut c = Connection::new(Role::Server, None);
+        c.receive_data(b"GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: \xff\r\n\r\n")
+            .unwrap();
+        assert!(matches!(
+            c.next_event(),
+            Err(ProtocolError::RemoteProtocolError(_))
         ));
     }
 

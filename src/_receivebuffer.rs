@@ -79,7 +79,7 @@ impl ReceiveBuffer {
             self.multiple_lines_search = self.data.len().saturating_sub(2);
             None
         } else {
-            let idx = match_.unwrap().end();
+            let idx = match_?.end();
             let out = self.extract(self.multiple_lines_search + idx);
             let mut lines = out
                 .split(|&b| b == b'\n')
@@ -91,8 +91,9 @@ impl ReceiveBuffer {
                     line
                 })
                 .collect::<Vec<_>>();
-            assert_eq!(lines[lines.len() - 2], b"", "lines: {:?}", lines);
-            assert_eq!(lines[lines.len() - 1], b"", "lines: {:?}", lines);
+            if lines.len() < 2 || lines[lines.len() - 2] != b"" || lines[lines.len() - 1] != b"" {
+                return None;
+            }
             lines.pop();
             lines.pop();
             Some(lines)
