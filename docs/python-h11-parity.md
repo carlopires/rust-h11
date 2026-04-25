@@ -98,7 +98,7 @@ Statuses:
 
 | Python h11 quality marker | Rust status | Notes |
 | --- | --- | --- |
-| Extensive API documentation | partial | Public rustdoc and a user guide cover the exported API surface and common flows; more specialized cookbook examples are still missing. |
+| Extensive API documentation | partial | Public rustdoc, a user guide, and compiled cookbook examples cover the exported API surface, common flows, pipelining, `100-continue`, and Upgrade handoff. |
 | Exhaustive test suite / coverage target | partial | Unit and integration tests exist; no coverage target or branch coverage gate. |
 | Fuzzing infrastructure | partial | cargo-fuzz harnesses and seed corpora exist; scheduled runs and crash regression promotion are still missing. |
 | Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons cover core flows, malformed start lines, pipelining, `100-continue`, CONNECT, Upgrade, malformed chunks, and EOF during bodies. Broader generated and minimized fixtures are still missing. |
@@ -106,6 +106,6 @@ Statuses:
 
 ## Initial Implementation Backlog
 
-1. Add specialized cookbook examples as API gaps are resolved.
-2. Add generated/minimized Python h11 fixtures as new malformed cases are found.
-3. Compare parser refactors against the documented performance baseline before replacing regex-based parsing.
+1. Add generated/minimized Python h11 fixtures as new malformed cases are found.
+2. Compare parser refactors against the documented performance baseline before replacing regex-based parsing.
+3. Add more cookbook examples as API gaps are resolved.
