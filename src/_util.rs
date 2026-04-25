@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct LocalProtocolError {
     pub message: String,
@@ -49,6 +51,14 @@ impl LocalProtocolError {
     }
 }
 
+impl fmt::Display for LocalProtocolError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} (status code {})", self.message, self.code)
+    }
+}
+
+impl std::error::Error for LocalProtocolError {}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoteProtocolError {
     pub message: String,
@@ -91,6 +101,14 @@ impl From<&str> for RemoteProtocolError {
     }
 }
 
+impl fmt::Display for RemoteProtocolError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} (status code {})", self.message, self.code)
+    }
+}
+
+impl std::error::Error for RemoteProtocolError {}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ProtocolError {
     LocalProtocolError(LocalProtocolError),
@@ -106,5 +124,45 @@ impl From<LocalProtocolError> for ProtocolError {
 impl From<RemoteProtocolError> for ProtocolError {
     fn from(value: RemoteProtocolError) -> Self {
         ProtocolError::RemoteProtocolError(value)
+    }
+}
+
+impl fmt::Display for ProtocolError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::LocalProtocolError(error) => write!(f, "local protocol error: {}", error),
+            Self::RemoteProtocolError(error) => write!(f, "remote protocol error: {}", error),
+        }
+    }
+}
+
+impl std::error::Error for ProtocolError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::LocalProtocolError(error) => Some(error),
+            Self::RemoteProtocolError(error) => Some(error),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
+
+    #[test]
+    fn protocol_errors_implement_display_and_error() {
+        let local = LocalProtocolError::from(("bad request", 400));
+        assert_eq!(local.to_string(), "bad request (status code 400)");
+
+        let remote = RemoteProtocolError::from(("bad gateway", 502));
+        assert_eq!(remote.to_string(), "bad gateway (status code 502)");
+
+        let error = ProtocolError::from(LocalProtocolError::from(("invalid", 400)));
+        assert_eq!(
+            error.to_string(),
+            "local protocol error: invalid (status code 400)"
+        );
+        assert!(error.source().is_some());
     }
 }

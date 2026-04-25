@@ -24,7 +24,7 @@ Statuses:
 | `Data` | `Data` | partial | Basic body chunks exist. Python supports sendfile-oriented data objects via `combine=False`; Rust currently requires owned `Vec<u8>`. |
 | `EndOfMessage` | `EndOfMessage` | same | End event and trailer headers exist. |
 | `ConnectionClosed` | `ConnectionClosed` | same | Close event exists. |
-| `ProtocolError` | `ProtocolError` | partial | Local/remote variants exist; Rust error types do not implement `std::error::Error` or `Display` yet. |
+| `ProtocolError` | `ProtocolError` | partial | Local/remote variants exist and implement standard Rust error traits; exception-style inheritance does not apply in Rust. |
 | `LocalProtocolError` | `LocalProtocolError` | partial | Exists with message and status code. |
 | `RemoteProtocolError` | `RemoteProtocolError` | partial | Exists with message and status code. |
 | `Headers` | `Headers` | partial | Normalization and raw casing preservation exist. Iteration clones values and construction ergonomics are narrower than Python. |
@@ -109,10 +109,9 @@ Statuses:
 1. Add public rustdoc for every exported type and method.
 2. Add generic constructors for `Request`, `Response`, and `Headers`.
 3. Add explicit constructors for informational and final responses.
-4. Implement `Display` and `std::error::Error` for protocol errors.
-5. Add Python h11 fixture generator and JSON event comparison tests.
-6. Expand RFC 9112 compliance notes into a section-by-section table.
-7. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
-8. Audit remaining public panic paths and convert them to protocol errors.
-9. Decide whether `PRODUCT_ID` belongs in the Rust public API.
-10. Benchmark parser hot paths before replacing regex-based parsing.
+4. Add Python h11 fixture generator and JSON event comparison tests.
+5. Expand RFC 9112 compliance notes into a section-by-section table.
+6. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
+7. Audit remaining public panic paths and convert them to protocol errors.
+8. Decide whether `PRODUCT_ID` belongs in the Rust public API.
+9. Benchmark parser hot paths before replacing regex-based parsing.
