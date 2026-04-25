@@ -31,6 +31,7 @@ fn _write_headers(headers: &Headers) -> Result<Vec<u8>, ProtocolError> {
 
 fn _write_request(request: &Request) -> Result<Vec<u8>, ProtocolError> {
     let mut data_list = Vec::new();
+    request.validate()?;
     if request.http_version != b"1.1" {
         return Err(ProtocolError::LocalProtocolError(
             "I only send HTTP/1.1".into(),
@@ -47,11 +48,14 @@ fn _write_request(request: &Request) -> Result<Vec<u8>, ProtocolError> {
 pub fn write_request(event: Event) -> Result<Vec<u8>, ProtocolError> {
     match event {
         Event::Request(request) => _write_request(&request),
-        _ => panic!("Expected Request event, got {:?}", event),
+        _ => Err(ProtocolError::LocalProtocolError(
+            format!("Expected Request event, got {:?}", event).into(),
+        )),
     }
 }
 
 fn _write_response(response: &Response) -> Result<Vec<u8>, ProtocolError> {
+    response.validate()?;
     if response.http_version != b"1.1" {
         return Err(ProtocolError::LocalProtocolError(
             "I only send HTTP/1.1".into(),
@@ -73,7 +77,9 @@ pub fn write_response(event: Event) -> Result<Vec<u8>, ProtocolError> {
     match event {
         Event::NormalResponse(response) => _write_response(&response),
         Event::InformationalResponse(response) => _write_response(&response),
-        _ => panic!("Expected Response event, got {:?}", event),
+        _ => Err(ProtocolError::LocalProtocolError(
+            format!("Expected Response event, got {:?}", event).into(),
+        )),
     }
 }
 
@@ -82,7 +88,9 @@ trait BodyWriter {
         match event {
             Event::Data(data) => self.send_data(&data.data),
             Event::EndOfMessage(eom) => self.send_eom(&eom.headers),
-            _ => panic!("Unknown event type {:?}", event),
+            _ => Err(ProtocolError::LocalProtocolError(
+                format!("Unknown event type {:?}", event).into(),
+            )),
         }
     }
 
@@ -274,6 +282,19 @@ mod tests {
                 headers: vec![(b"Etag".to_vec(), b"asdf".to_vec())].into(),
             }))
             .is_err());
+
+        let mut w = ContentLengthWriter { length: 5 };
+        assert!(w
+            .call(Event::Request(
+                Request::new(
+                    b"GET".to_vec(),
+                    vec![(b"Host".to_vec(), b"example.com".to_vec())].into(),
+                    b"/".to_vec(),
+                    b"1.1".to_vec(),
+                )
+                .unwrap()
+            ))
+            .is_err());
     }
 
     #[test]
@@ -347,5 +368,11 @@ mod tests {
                 headers: vec![(b"Etag".to_vec(), b"asdf".to_vec())].into(),
             }))
             .is_err());
+    }
+
+    #[test]
+    fn test_head_writers_reject_wrong_event_type() {
+        assert!(write_request(Event::EndOfMessage(EndOfMessage::default())).is_err());
+        assert!(write_response(Event::EndOfMessage(EndOfMessage::default())).is_err());
     }
 }
