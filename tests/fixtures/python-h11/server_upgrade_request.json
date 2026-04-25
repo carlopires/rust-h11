@@ -1,0 +1,34 @@
+{
+  "chunks_hex": [
+    "474554202f6368617420485454502f312e310d0a486f73743a206578616d706c652e636f6d0d0a436f6e6e656374696f6e3a20557067726164650d0a557067726164653a20776562736f636b65740d0a0d0a"
+  ],
+  "events": [
+    {
+      "headers": [
+        {
+          "name_hex": "486f7374",
+          "value_hex": "6578616d706c652e636f6d"
+        },
+        {
+          "name_hex": "436f6e6e656374696f6e",
+          "value_hex": "55706772616465"
+        },
+        {
+          "name_hex": "55706772616465",
+          "value_hex": "776562736f636b6574"
+        }
+      ],
+      "http_version_hex": "312e31",
+      "method_hex": "474554",
+      "target_hex": "2f63686174",
+      "type": "Request"
+    },
+    {
+      "headers": [],
+      "type": "EndOfMessage"
+    }
+  ],
+  "name": "server_upgrade_request",
+  "python_h11_version": "0.16.0",
+  "role": "SERVER"
+}

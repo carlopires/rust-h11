@@ -1,0 +1,30 @@
+{
+  "chunks_hex": [
+    "474554202f6f6e6520485454502f312e310d0a486f73743a206578616d706c652e636f6d0d0a0d0a474554202f74776f20485454502f312e310d0a486f73743a206578616d706c652e636f6d0d0a0d0a"
+  ],
+  "events": [
+    {
+      "headers": [
+        {
+          "name_hex": "486f7374",
+          "value_hex": "6578616d706c652e636f6d"
+        }
+      ],
+      "http_version_hex": "312e31",
+      "method_hex": "474554",
+      "target_hex": "2f6f6e65",
+      "type": "Request"
+    },
+    {
+      "headers": [],
+      "type": "EndOfMessage"
+    },
+    {
+      "type": "Paused"
+    }
+  ],
+  "include_terminal": true,
+  "name": "server_pipelined_requests",
+  "python_h11_version": "0.16.0",
+  "role": "SERVER"
+}

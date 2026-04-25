@@ -101,13 +101,13 @@ Statuses:
 | Extensive API documentation | partial | Public rustdoc covers the exported API surface; longer guide pages are still missing. |
 | Exhaustive test suite / coverage target | partial | Unit and integration tests exist; no coverage target or branch coverage gate. |
 | Fuzzing infrastructure | partial | cargo-fuzz harnesses and seed corpora exist; scheduled runs and crash regression promotion are still missing. |
-| Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons exist for core request/response flows. Broader generated fixtures are still missing. |
+| Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons cover core flows, malformed start lines, pipelining, `100-continue`, CONNECT, and Upgrade. Broader generated and minimized fixtures are still missing. |
 | No runtime dependencies outside standard library | partial | Runtime depends on `lazy_static` and `regex`. Decide whether to keep or replace with byte parsers. |
 
 ## Initial Implementation Backlog
 
-1. Expand Python h11 fixtures to cover malformed inputs, pipelining, `100-continue`, CONNECT, and Upgrade.
-2. Audit remaining public panic paths and convert them to protocol errors.
-3. Add longer guide pages for clients, servers, bodies, keep-alive, and protocol switching.
+1. Audit remaining public panic paths and convert them to protocol errors.
+2. Add longer guide pages for clients, servers, bodies, keep-alive, and protocol switching.
+3. Add generated/minimized Python h11 fixtures for additional malformed body and EOF cases.
 4. Decide whether `PRODUCT_ID` belongs in the Rust public API.
 5. Benchmark parser hot paths before replacing regex-based parsing.
