@@ -18,13 +18,13 @@ A client creates a `Connection` with `Role::Client`, sends a request head,
 optionally sends body data, then reads response events.
 
 ```rust
-use h11::{Connection, EndOfMessage, Event, Headers, Request, Role};
+use h11::{Connection, EndOfMessage, Event, Headers, PRODUCT_ID, Request, Role};
 
 fn build_get_request() -> Result<Vec<Vec<u8>>, h11::ProtocolError> {
     let mut conn = Connection::new(Role::Client, None);
     let request = Request::new_http11(
         "GET",
-        Headers::new([("Host", "example.com"), ("User-Agent", "example")])?,
+        Headers::new([("Host", "example.com"), ("User-Agent", PRODUCT_ID)])?,
         "/",
     )?;
 

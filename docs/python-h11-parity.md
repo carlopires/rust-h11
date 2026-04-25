@@ -28,7 +28,7 @@ Statuses:
 | `LocalProtocolError` | `LocalProtocolError` | partial | Exists with message and status code. |
 | `RemoteProtocolError` | `RemoteProtocolError` | partial | Exists with message and status code. |
 | `Headers` | `Headers` | partial | Normalization and raw casing preservation exist. Constructors accept borrowed byte-like values, but iteration clones values. |
-| `PRODUCT_ID` | none | missing | Useful for default `User-Agent` / `Server` identification if this crate wants Python-style helper behavior. |
+| `PRODUCT_ID` | `PRODUCT_ID` | rust-specific | Exposes `rust-h11/<crate-version>` for optional `User-Agent` / `Server` use; the crate does not inject it automatically. |
 
 ## Roles and States
 
@@ -106,7 +106,6 @@ Statuses:
 
 ## Initial Implementation Backlog
 
-1. Decide whether `PRODUCT_ID` belongs in the Rust public API.
-2. Benchmark parser hot paths before replacing regex-based parsing.
-3. Add specialized cookbook examples as API gaps are resolved.
-4. Add generated/minimized Python h11 fixtures as new malformed cases are found.
+1. Benchmark parser hot paths before replacing regex-based parsing.
+2. Add specialized cookbook examples as API gaps are resolved.
+3. Add generated/minimized Python h11 fixtures as new malformed cases are found.
