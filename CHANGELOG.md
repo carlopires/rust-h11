@@ -6,9 +6,9 @@ This project follows semantic versioning once published. While the version is
 `0.y.z`, public API changes can still be breaking, but they should be called
 out explicitly in this file.
 
-## 0.1.0 - Unreleased
+## 0.1.1 - Unreleased
 
-Initial publish candidate.
+Publish-readiness candidate.
 
 ### Added
 
@@ -28,3 +28,7 @@ Initial publish candidate.
 - Request-target forms are validated but not classified.
 - Trailer field-specific restrictions are not enforced.
 - Coverage thresholds and scheduled fuzzing are not yet configured.
+
+## 0.1.0
+
+Initial crates.io version.
