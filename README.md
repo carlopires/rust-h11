@@ -12,7 +12,7 @@ keep-alive, `100-continue`, protocol switching, and error handling. See the
 ## Install
 
 ```bash
-cargo add h11
+cargo add rust-h11
 ```
 
 ## Basic Usage

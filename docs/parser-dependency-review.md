@@ -5,7 +5,7 @@ parser implementation.
 
 ## Decision
 
-Keep `lazy_static` and `regex` for the initial `0.1.0` publish.
+Keep `lazy_static` and `regex` for the initial `rust-h11` publish.
 
 The crate now has:
 
