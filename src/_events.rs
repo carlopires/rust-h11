@@ -11,15 +11,25 @@ lazy_static! {
     static ref REQUEST_TARGET_RE: Regex = Regex::new(&format!(r"^{}$", *REQUEST_TARGET)).unwrap();
 }
 
+/// HTTP request head event.
+///
+/// Use [`Request::new`] or [`Request::new_http11`] for fallible construction.
+/// Direct struct literals are possible, but callers should run
+/// [`Request::validate`] before sending values built from untrusted input.
 #[derive(Clone, PartialEq, Eq, Default)]
 pub struct Request {
+    /// Request method bytes, for example `GET` or `POST`.
     pub method: Vec<u8>,
+    /// Normalized request headers with original casing preserved.
     pub headers: Headers,
+    /// Request target bytes.
     pub target: Vec<u8>,
+    /// HTTP version without the `HTTP/` prefix, for example `1.1`.
     pub http_version: Vec<u8>,
 }
 
 impl Request {
+    /// Builds and validates a request with an explicit HTTP version.
     pub fn new<M, T, V>(
         method: M,
         headers: Headers,
@@ -41,6 +51,7 @@ impl Request {
         Ok(request)
     }
 
+    /// Builds and validates an HTTP/1.1 request.
     pub fn new_http11<M, T>(method: M, headers: Headers, target: T) -> Result<Self, ProtocolError>
     where
         M: AsRef<[u8]>,
@@ -49,6 +60,7 @@ impl Request {
         Self::new(method, headers, target, b"1.1")
     }
 
+    /// Validates request method, target, HTTP version, and Host header rules.
     pub fn validate(&self) -> Result<(), ProtocolError> {
         let mut host_count = 0;
         for (name, _) in self.headers.iter() {
@@ -98,15 +110,25 @@ impl std::fmt::Debug for Request {
     }
 }
 
+/// HTTP response head event.
+///
+/// The same struct is used for informational and final responses. Use the
+/// range-checked constructors or [`Event::informational_response`] /
+/// [`Event::normal_response`] when that distinction matters.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Response {
+    /// Normalized response headers with original casing preserved.
     pub headers: Headers,
+    /// HTTP version without the `HTTP/` prefix, for example `1.1`.
     pub http_version: Vec<u8>,
+    /// Reason phrase bytes.
     pub reason: Vec<u8>,
+    /// Three-digit HTTP status code.
     pub status_code: u16,
 }
 
 impl Response {
+    /// Builds and validates a response with an explicit HTTP version.
     pub fn new<R, V>(
         status_code: u16,
         headers: Headers,
@@ -127,6 +149,7 @@ impl Response {
         Ok(response)
     }
 
+    /// Builds and validates an HTTP/1.1 response.
     pub fn new_http11<R>(
         status_code: u16,
         headers: Headers,
@@ -138,6 +161,9 @@ impl Response {
         Self::new(status_code, headers, reason, b"1.1")
     }
 
+    /// Builds and validates an informational response.
+    ///
+    /// The status code must be in `100..=199`.
     pub fn new_informational<R, V>(
         status_code: u16,
         headers: Headers,
@@ -161,6 +187,9 @@ impl Response {
         Ok(response)
     }
 
+    /// Builds and validates an HTTP/1.1 informational response.
+    ///
+    /// The status code must be in `100..=199`.
     pub fn new_informational_http11<R>(
         status_code: u16,
         headers: Headers,
@@ -172,6 +201,9 @@ impl Response {
         Self::new_informational(status_code, headers, reason, b"1.1")
     }
 
+    /// Builds and validates a final response.
+    ///
+    /// The status code must be `>= 200`.
     pub fn new_final<R, V>(
         status_code: u16,
         headers: Headers,
@@ -191,6 +223,9 @@ impl Response {
         Ok(response)
     }
 
+    /// Builds and validates an HTTP/1.1 final response.
+    ///
+    /// The status code must be `>= 200`.
     pub fn new_final_http11<R>(
         status_code: u16,
         headers: Headers,
@@ -202,6 +237,7 @@ impl Response {
         Self::new_final(status_code, headers, reason, b"1.1")
     }
 
+    /// Validates response status code, reason phrase, and HTTP version.
     pub fn validate(&self) -> Result<(), ProtocolError> {
         if !(100..=999).contains(&self.status_code) {
             return Err(ProtocolError::LocalProtocolError(
@@ -222,30 +258,46 @@ impl Response {
     }
 }
 
+/// HTTP message body data.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Data {
+    /// Body bytes for this chunk.
     pub data: Vec<u8>,
+    /// Whether this event begins a transfer-coding chunk.
     pub chunk_start: bool,
+    /// Whether this event ends a transfer-coding chunk.
     pub chunk_end: bool,
 }
 
+/// End of the current HTTP message.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct EndOfMessage {
+    /// Trailer fields sent after a chunked body.
     pub headers: Headers,
 }
 
+/// Notification that the connection has closed.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ConnectionClosed {}
 
+/// Protocol events emitted and accepted by [`crate::Connection`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
+    /// Request head event.
     Request(Request),
+    /// Final response head event with status code `>= 200`.
     NormalResponse(Response),
+    /// Informational response head event with status code in `100..=199`.
     InformationalResponse(Response),
+    /// Message body data.
     Data(Data),
+    /// End of a request or response message.
     EndOfMessage(EndOfMessage),
+    /// Connection close notification.
     ConnectionClosed(ConnectionClosed),
+    /// More bytes are needed before another inbound event can be produced.
     NeedData(),
+    /// Inbound data is paused until the current cycle is completed.
     Paused(),
 }
 
@@ -265,6 +317,7 @@ impl From<Response> for Event {
 }
 
 impl Event {
+    /// Converts a validated response into an informational response event.
     pub fn informational_response(response: Response) -> Result<Self, ProtocolError> {
         if !(100..=199).contains(&response.status_code) {
             return Err(ProtocolError::LocalProtocolError(
@@ -279,6 +332,7 @@ impl Event {
         Ok(Self::InformationalResponse(response))
     }
 
+    /// Converts a validated response into a final response event.
     pub fn normal_response(response: Response) -> Result<Self, ProtocolError> {
         if response.status_code < 200 {
             return Err(ProtocolError::LocalProtocolError(

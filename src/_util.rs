@@ -1,8 +1,11 @@
 use std::fmt;
 
+/// Error caused by invalid local API usage or invalid locally-created events.
 #[derive(Debug, PartialEq, Eq)]
 pub struct LocalProtocolError {
+    /// Human-readable error message.
     pub message: String,
+    /// Suggested HTTP status code for this protocol error.
     pub code: u16,
 }
 
@@ -59,9 +62,12 @@ impl fmt::Display for LocalProtocolError {
 
 impl std::error::Error for LocalProtocolError {}
 
+/// Error caused by malformed peer input.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoteProtocolError {
+    /// Human-readable error message.
     pub message: String,
+    /// Suggested HTTP status code for this protocol error.
     pub code: u16,
 }
 
@@ -109,9 +115,12 @@ impl fmt::Display for RemoteProtocolError {
 
 impl std::error::Error for RemoteProtocolError {}
 
+/// Protocol error wrapper used by fallible public APIs.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ProtocolError {
+    /// Local protocol misuse.
     LocalProtocolError(LocalProtocolError),
+    /// Remote peer protocol violation.
     RemoteProtocolError(RemoteProtocolError),
 }
 

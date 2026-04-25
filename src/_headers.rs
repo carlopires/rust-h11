@@ -14,6 +14,10 @@ lazy_static! {
     static ref FIELD_VALUE_RE: Regex = Regex::new(&format!(r"^{}$", *FIELD_VALUE)).unwrap();
 }
 
+/// HTTP header collection.
+///
+/// Header names are stored in normalized lowercase form for lookup, while the
+/// original raw casing is retained for serialization.
 #[derive(Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
 pub struct Headers(Vec<(Vec<u8>, Vec<u8>, Vec<u8>)>);
 
@@ -31,24 +35,35 @@ impl std::fmt::Debug for Headers {
 }
 
 impl Headers {
+    /// Returns normalized `(name, value)` pairs.
+    ///
+    /// Names are lowercase. Values preserve their stored bytes.
     pub fn iter(&self) -> impl Iterator<Item = (Vec<u8>, Vec<u8>)> + '_ {
         self.0
             .iter()
             .map(|(_, name, value)| ((*name).clone(), (*value).clone()))
     }
 
+    /// Returns raw `(raw_name, normalized_name, value)` header triples.
     pub fn raw_items(&self) -> Vec<&(Vec<u8>, Vec<u8>, Vec<u8>)> {
         self.0.iter().collect()
     }
 
+    /// Returns the number of header fields.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Returns true when the collection has no header fields.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Builds and validates a header collection from byte-like name/value pairs.
+    ///
+    /// This validates field syntax, normalizes names for lookup, preserves raw
+    /// name casing for output, and enforces `Content-Length` /
+    /// `Transfer-Encoding` consistency.
     pub fn new<I, N, V>(headers: I) -> Result<Self, ProtocolError>
     where
         I: IntoIterator<Item = (N, V)>,
@@ -66,12 +81,20 @@ impl Headers {
 }
 
 impl From<Vec<(Vec<u8>, Vec<u8>)>> for Headers {
+    /// Builds headers from owned byte vectors.
+    ///
+    /// This conversion panics if the headers are invalid. Prefer
+    /// [`Headers::new`] when handling untrusted or fallible input.
     fn from(value: Vec<(Vec<u8>, Vec<u8>)>) -> Self {
         Headers::new(value)
             .expect("invalid HTTP header list; use Headers::new for fallible construction")
     }
 }
 
+/// Normalizes and validates HTTP header fields.
+///
+/// This is primarily used by parsers and [`Headers::new`]. The `_parsed`
+/// argument skips field syntax checks for already-parsed wire input.
 pub fn normalize_and_validate(
     headers: Vec<(Vec<u8>, Vec<u8>)>,
     _parsed: bool,
@@ -152,6 +175,7 @@ pub fn normalize_and_validate(
     Ok(Headers(new_headers))
 }
 
+/// Reads a comma-separated header value as lowercase trimmed byte values.
 pub fn get_comma_header(headers: &Headers, name: &[u8]) -> Vec<Vec<u8>> {
     let mut out: Vec<Vec<u8>> = vec![];
     let name = name.to_ascii_lowercase();
@@ -168,6 +192,7 @@ pub fn get_comma_header(headers: &Headers, name: &[u8]) -> Vec<Vec<u8>> {
     out
 }
 
+/// Replaces all instances of a comma-separated header.
 pub fn set_comma_header(
     headers: &Headers,
     name: &[u8],
@@ -185,6 +210,7 @@ pub fn set_comma_header(
     normalize_and_validate(new_headers, false)
 }
 
+/// Returns whether a request contains an active `Expect: 100-continue`.
 pub fn has_expect_100_continue(request: &Request) -> bool {
     // https://www.rfc-editor.org/rfc/rfc9110.html#section-10.1.1
     // "A server that receives a 100-continue expectation in an HTTP/1.0 request

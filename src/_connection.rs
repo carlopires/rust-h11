@@ -124,8 +124,17 @@ fn invalid_body_framing(framing_type: &str) -> ProtocolError {
     )
 }
 
+/// Sans-I/O HTTP/1.1 connection state machine.
+///
+/// A `Connection` owns parser and serializer state for one endpoint role. It
+/// does not perform I/O directly: callers supply received bytes with
+/// [`Connection::receive_data`], consume inbound events with
+/// [`Connection::next_event`], and write bytes returned by [`Connection::send`]
+/// to their transport.
 pub struct Connection {
+    /// Role represented by this connection object.
     pub our_role: Role,
+    /// Peer role.
     pub their_role: Role,
     _cstate: ConnectionState,
     _writer: Option<Box<WriterFnMut>>,
@@ -133,12 +142,17 @@ pub struct Connection {
     _max_incomplete_event_size: usize,
     _receive_buffer: ReceiveBuffer,
     _receive_buffer_closed: bool,
+    /// Most recently observed peer HTTP version, without the `HTTP/` prefix.
     pub their_http_version: Option<Vec<u8>>,
     _request_method: Option<Vec<u8>>,
     client_is_waiting_for_100_continue: bool,
 }
 
 impl Connection {
+    /// Creates a connection for the given local role.
+    ///
+    /// `max_incomplete_event_size` limits buffered incomplete inbound data.
+    /// Passing `None` uses the crate default.
     pub fn new(our_role: Role, max_incomplete_event_size: Option<usize>) -> Self {
         Self {
             our_role,
@@ -166,26 +180,35 @@ impl Connection {
         }
     }
 
+    /// Returns a cloned map of both role states.
     pub fn get_states(&self) -> HashMap<Role, State> {
         self._cstate.states.clone()
     }
 
+    /// Returns the current state for this endpoint.
     pub fn get_our_state(&self) -> State {
         self._cstate.states[&self.our_role]
     }
 
+    /// Returns the current state for the peer endpoint.
     pub fn get_their_state(&self) -> State {
         self._cstate.states[&self.their_role]
     }
 
+    /// Returns whether the client is waiting for a `100 Continue` response.
     pub fn get_client_is_waiting_for_100_continue(&self) -> bool {
         self.client_is_waiting_for_100_continue
     }
 
+    /// Returns whether the peer is waiting for a `100 Continue` response.
     pub fn get_they_are_waiting_for_100_continue(&self) -> bool {
         self.their_role == Role::Client && self.client_is_waiting_for_100_continue
     }
 
+    /// Starts the next keep-alive request/response cycle.
+    ///
+    /// This is valid only when both sides have completed the previous cycle and
+    /// the state machine allows reuse.
     pub fn start_next_cycle(&mut self) -> Result<(), ProtocolError> {
         let old_states = self._cstate.states.clone();
         self._cstate.start_next_cycle()?;
@@ -375,6 +398,9 @@ impl Connection {
         Ok(())
     }
 
+    /// Returns bytes received after the current event stream paused.
+    ///
+    /// The boolean indicates whether EOF has been received.
     pub fn get_trailing_data(&self) -> (Vec<u8>, bool) {
         (
             self._receive_buffer.bytes().to_vec(),
@@ -382,6 +408,10 @@ impl Connection {
         )
     }
 
+    /// Feeds received bytes into the connection.
+    ///
+    /// Passing an empty slice marks EOF. After EOF, passing more bytes is a
+    /// local protocol error.
     pub fn receive_data(&mut self, data: &[u8]) -> Result<(), ProtocolError> {
         Ok(if data.len() > 0 {
             if self._receive_buffer_closed {
@@ -416,6 +446,11 @@ impl Connection {
         Ok(event.unwrap_or(Event::NeedData()))
     }
 
+    /// Returns the next inbound protocol event.
+    ///
+    /// If more bytes are needed, returns [`Event::NeedData`]. If processing is
+    /// paused behind a completed message or protocol switch, returns
+    /// [`Event::Paused`].
     pub fn next_event(&mut self) -> Result<Event, ProtocolError> {
         if self.get_their_state() == State::Error {
             return Err(ProtocolError::RemoteProtocolError(
@@ -459,6 +494,11 @@ impl Connection {
         }
     }
 
+    /// Serializes an outbound event and advances local state.
+    ///
+    /// Returns `Ok(Some(bytes))` for events that produce wire bytes and
+    /// `Ok(None)` for [`Event::ConnectionClosed`]. Invalid local sequencing or
+    /// invalid event contents return [`ProtocolError::LocalProtocolError`].
     pub fn send(&mut self, mut event: Event) -> Result<Option<Vec<u8>>, ProtocolError> {
         if self.get_our_state() == State::Error {
             return Err(ProtocolError::LocalProtocolError(
@@ -499,6 +539,7 @@ impl Connection {
         }
     }
 
+    /// Marks the local send side as errored after an external write failure.
     pub fn send_failed(&mut self) {
         self._process_error(self.our_role);
     }
