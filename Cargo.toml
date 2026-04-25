@@ -9,6 +9,8 @@ repository = "https://github.com/carlopires/rust-h11"
 homepage = "https://github.com/carlopires/rust-h11"
 documentation = "https://docs.rs/h11"
 readme = "README.md"
+keywords = ["http", "http1", "sans-io", "parser"]
+categories = ["network-programming", "parser-implementations"]
 exclude = ["fuzz/"]
 
 [dependencies]

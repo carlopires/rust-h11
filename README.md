@@ -69,5 +69,6 @@ cargo bench --bench parser
 
 See [performance baselines](docs/performance.md) for comparison guidance.
 See [hardening guidance](docs/hardening.md) for fuzzing and release checks.
+See [publish checklist](docs/publish.md) before publishing to crates.io.
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md), and
 [SECURITY.md](SECURITY.md) for project policies.
