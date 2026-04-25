@@ -24,3 +24,17 @@ path = "fuzz_targets/parse_response_stream.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "chunked_body_stream"
+path = "fuzz_targets/chunked_body_stream.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "state_machine_roundtrip"
+path = "fuzz_targets/state_machine_roundtrip.rs"
+test = false
+doc = false
+bench = false
