@@ -20,12 +20,8 @@ use h11::{Connection, EndOfMessage, Event, Headers, Request, Response, Role};
 
 fn main() -> Result<(), h11::ProtocolError> {
     let mut client = Connection::new(Role::Client, None);
-    let request = Request::new(
-        b"GET".to_vec(),
-        Headers::new(vec![(b"Host".to_vec(), b"example.com".to_vec())])?,
-        b"/".to_vec(),
-        b"1.1".to_vec(),
-    )?;
+    let request =
+        Request::new_http11("GET", Headers::new([("Host", "example.com")])?, "/")?;
 
     let bytes_to_send = client.send(request.into())?.unwrap();
     assert_eq!(
@@ -41,11 +37,10 @@ fn main() -> Result<(), h11::ProtocolError> {
         event => panic!("unexpected event: {event:?}"),
     }
 
-    let response = Response::new(
+    let response = Response::new_http11(
         200,
-        Headers::new(vec![(b"Content-Length".to_vec(), b"0".to_vec())])?,
-        b"OK".to_vec(),
-        b"1.1".to_vec(),
+        Headers::new([("Content-Length", "0")])?,
+        "OK",
     )?;
 
     let response_bytes = server.send(response.into())?.unwrap();

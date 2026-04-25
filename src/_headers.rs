@@ -49,8 +49,19 @@ impl Headers {
         self.0.is_empty()
     }
 
-    pub fn new(headers: Vec<(Vec<u8>, Vec<u8>)>) -> Result<Self, ProtocolError> {
-        normalize_and_validate(headers, false)
+    pub fn new<I, N, V>(headers: I) -> Result<Self, ProtocolError>
+    where
+        I: IntoIterator<Item = (N, V)>,
+        N: AsRef<[u8]>,
+        V: AsRef<[u8]>,
+    {
+        normalize_and_validate(
+            headers
+                .into_iter()
+                .map(|(name, value)| (name.as_ref().to_vec(), value.as_ref().to_vec()))
+                .collect(),
+            false,
+        )
     }
 }
 
@@ -192,6 +203,25 @@ mod tests {
     #[test]
     fn test_headers_new_rejects_invalid_input() {
         assert!(Headers::new(vec![(b"bad header".to_vec(), b"value".to_vec())]).is_err());
+    }
+
+    #[test]
+    fn test_headers_new_accepts_borrowed_inputs() {
+        assert_eq!(
+            Headers::new([("Host", "example.com"), ("Accept", "*/*")]).unwrap(),
+            Headers(vec![
+                (b"Host".to_vec(), b"host".to_vec(), b"example.com".to_vec()),
+                (b"Accept".to_vec(), b"accept".to_vec(), b"*/*".to_vec()),
+            ])
+        );
+        assert_eq!(
+            Headers::new([(b"Host".as_slice(), b"example.com".as_slice())]).unwrap(),
+            Headers(vec![(
+                b"Host".to_vec(),
+                b"host".to_vec(),
+                b"example.com".to_vec()
+            )])
+        );
     }
 
     #[test]

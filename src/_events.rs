@@ -20,20 +20,33 @@ pub struct Request {
 }
 
 impl Request {
-    pub fn new(
-        method: Vec<u8>,
+    pub fn new<M, T, V>(
+        method: M,
         headers: Headers,
-        target: Vec<u8>,
-        http_version: Vec<u8>,
-    ) -> Result<Self, ProtocolError> {
+        target: T,
+        http_version: V,
+    ) -> Result<Self, ProtocolError>
+    where
+        M: AsRef<[u8]>,
+        T: AsRef<[u8]>,
+        V: AsRef<[u8]>,
+    {
         let request = Self {
-            method,
+            method: method.as_ref().to_vec(),
             headers,
-            target,
-            http_version,
+            target: target.as_ref().to_vec(),
+            http_version: http_version.as_ref().to_vec(),
         };
         request.validate()?;
         Ok(request)
+    }
+
+    pub fn new_http11<M, T>(method: M, headers: Headers, target: T) -> Result<Self, ProtocolError>
+    where
+        M: AsRef<[u8]>,
+        T: AsRef<[u8]>,
+    {
+        Self::new(method, headers, target, b"1.1")
     }
 
     pub fn validate(&self) -> Result<(), ProtocolError> {
@@ -94,20 +107,35 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn new(
+    pub fn new<R, V>(
         status_code: u16,
         headers: Headers,
-        reason: Vec<u8>,
-        http_version: Vec<u8>,
-    ) -> Result<Self, ProtocolError> {
+        reason: R,
+        http_version: V,
+    ) -> Result<Self, ProtocolError>
+    where
+        R: AsRef<[u8]>,
+        V: AsRef<[u8]>,
+    {
         let response = Self {
             headers,
-            http_version,
-            reason,
+            http_version: http_version.as_ref().to_vec(),
+            reason: reason.as_ref().to_vec(),
             status_code,
         };
         response.validate()?;
         Ok(response)
+    }
+
+    pub fn new_http11<R>(
+        status_code: u16,
+        headers: Headers,
+        reason: R,
+    ) -> Result<Self, ProtocolError>
+    where
+        R: AsRef<[u8]>,
+    {
+        Self::new(status_code, headers, reason, b"1.1")
     }
 
     pub fn validate(&self) -> Result<(), ProtocolError> {
@@ -223,5 +251,27 @@ mod tests {
             b"HTTP/1.1".to_vec(),
         )
         .is_err());
+    }
+
+    #[test]
+    fn test_request_new_accepts_borrowed_inputs_and_http11_default() {
+        let request =
+            Request::new_http11("GET", Headers::new([("Host", "example.com")]).unwrap(), "/")
+                .unwrap();
+
+        assert_eq!(request.method, b"GET");
+        assert_eq!(request.target, b"/");
+        assert_eq!(request.http_version, b"1.1");
+    }
+
+    #[test]
+    fn test_response_new_accepts_borrowed_inputs_and_http11_default() {
+        let response =
+            Response::new_http11(200, Headers::new([("Content-Length", "0")]).unwrap(), "OK")
+                .unwrap();
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.reason, b"OK");
+        assert_eq!(response.http_version, b"1.1");
     }
 }
