@@ -43,12 +43,17 @@ impl From<Response> for RequestOrResponse {
     }
 }
 
-impl From<Event> for RequestOrResponse {
-    fn from(value: Event) -> Self {
+impl TryFrom<Event> for RequestOrResponse {
+    type Error = ProtocolError;
+
+    fn try_from(value: Event) -> Result<Self, Self::Error> {
         match value {
-            Event::Request(request) => Self::Request(request),
-            Event::NormalResponse(response) => Self::Response(response),
-            _ => panic!("Invalid event type"),
+            Event::Request(request) => Ok(Self::Request(request)),
+            Event::NormalResponse(response) => Ok(Self::Response(response)),
+            Event::InformationalResponse(response) => Ok(Self::Response(response)),
+            _ => Err(ProtocolError::LocalProtocolError(
+                format!("Expected request or response event, got {:?}", value).into(),
+            )),
         }
     }
 }
@@ -65,7 +70,10 @@ fn _keep_alive<T: Into<RequestOrResponse>>(event: T) -> bool {
     return true;
 }
 
-fn _body_framing<T: Into<RequestOrResponse>>(request_method: &[u8], event: T) -> (&str, isize) {
+fn _body_framing<T: Into<RequestOrResponse>>(
+    request_method: &[u8],
+    event: T,
+) -> Result<(&str, isize), ProtocolError> {
     let event: RequestOrResponse = event.into();
     if let RequestOrResponse::Response(response) = &event {
         if response.status_code == 204
@@ -75,33 +83,45 @@ fn _body_framing<T: Into<RequestOrResponse>>(request_method: &[u8], event: T) ->
                 && 200 <= response.status_code
                 && response.status_code < 300)
         {
-            return ("content-length", 0);
+            return Ok(("content-length", 0));
         }
-        assert!(response.status_code >= 200);
+        if response.status_code < 200 {
+            return Err(ProtocolError::LocalProtocolError(
+                "Informational responses do not have a message body".into(),
+            ));
+        }
     }
 
-    let trasfer_encodings = get_comma_header(event.headers(), b"transfer-encoding");
-    if !trasfer_encodings.is_empty() {
-        assert!(trasfer_encodings == vec![b"chunked".to_vec()]);
-        return ("chunked", 0);
+    let transfer_encodings = get_comma_header(event.headers(), b"transfer-encoding");
+    if !transfer_encodings.is_empty() {
+        if transfer_encodings != vec![b"chunked".to_vec()] {
+            return Err(ProtocolError::LocalProtocolError(
+                ("Only Transfer-Encoding: chunked is supported", 501).into(),
+            ));
+        }
+        return Ok(("chunked", 0));
     }
 
     let content_lengths = get_comma_header(event.headers(), b"content-length");
     if !content_lengths.is_empty() {
-        return (
-            "content-length",
-            std::str::from_utf8(&content_lengths[0])
-                .unwrap()
-                .parse()
-                .unwrap(),
-        );
+        let length = std::str::from_utf8(&content_lengths[0])
+            .map_err(|_| ProtocolError::LocalProtocolError("bad Content-Length".into()))?
+            .parse()
+            .map_err(|_| ProtocolError::LocalProtocolError("bad Content-Length".into()))?;
+        return Ok(("content-length", length));
     }
 
     if let RequestOrResponse::Request(_) = event {
-        return ("content-length", 0);
+        return Ok(("content-length", 0));
     } else {
-        return ("http/1.0", 0);
+        return Ok(("http/1.0", 0));
     }
+}
+
+fn invalid_body_framing(framing_type: &str) -> ProtocolError {
+    ProtocolError::LocalProtocolError(
+        format!("Invalid role and framing type combination: {framing_type}").into(),
+    )
 }
 
 pub struct Connection {
@@ -172,14 +192,14 @@ impl Connection {
         self._request_method = None;
         self.their_http_version = None;
         self.client_is_waiting_for_100_continue = false;
-        self._respond_to_state_changes(old_states, None);
+        self._respond_to_state_changes(old_states, None)?;
         Ok(())
     }
 
     fn _process_error(&mut self, role: Role) {
         let old_states = self._cstate.states.clone();
         self._cstate.process_error(role);
-        self._respond_to_state_changes(old_states, None);
+        let _ = self._respond_to_state_changes(old_states, None);
     }
 
     fn _server_switch_event(&self, event: Event) -> Option<Switch> {
@@ -276,32 +296,32 @@ impl Connection {
             _ => {}
         }
 
-        self._respond_to_state_changes(old_states, Some(event));
-        Ok(())
+        self._respond_to_state_changes(old_states, Some(event))
     }
 
     fn _respond_to_state_changes(
         &mut self,
         old_states: HashMap<Role, State>,
         event: Option<Event>,
-    ) {
+    ) -> Result<(), ProtocolError> {
         if self.get_our_state() != old_states[&self.our_role] {
             let state = self._cstate.states[&self.our_role];
             self._writer = match state {
                 State::SendBody => {
                     let request_method = self._request_method.clone().unwrap_or(vec![]);
-                    let (framing_type, length) = _body_framing(
-                        &request_method,
-                        RequestOrResponse::from(event.clone().unwrap()),
-                    );
+                    let event = event.clone().ok_or_else(|| {
+                        ProtocolError::LocalProtocolError(
+                            "Missing event for body framing".to_string().into(),
+                        )
+                    })?;
+                    let (framing_type, length) =
+                        _body_framing(&request_method, RequestOrResponse::try_from(event)?)?;
 
                     match framing_type {
                         "content-length" => Some(Box::new(content_length_writer(length))),
                         "chunked" => Some(Box::new(chunked_writer())),
                         "http/1.0" => Some(Box::new(http10_writer())),
-                        _ => {
-                            panic!("Invalid role and framing type combination");
-                        }
+                        _ => return Err(invalid_body_framing(framing_type)),
                     }
                 }
                 _ => match (&self.our_role, state) {
@@ -316,19 +336,24 @@ impl Connection {
             self._reader = match self._cstate.states[&self.their_role] {
                 State::SendBody => {
                     let request_method = self._request_method.clone().unwrap_or(vec![]);
-                    let (framing_type, length) = _body_framing(
-                        &request_method,
-                        RequestOrResponse::from(event.clone().unwrap()),
-                    );
+                    let event = event.clone().ok_or_else(|| {
+                        ProtocolError::LocalProtocolError(
+                            "Missing event for body framing".to_string().into(),
+                        )
+                    })?;
+                    let (framing_type, length) =
+                        _body_framing(&request_method, RequestOrResponse::try_from(event)?)?;
                     match framing_type {
-                        "content-length" => {
-                            Some(Box::new(ContentLengthReader::new(length as usize)))
-                        }
+                        "content-length" => Some(Box::new(ContentLengthReader::new(
+                            usize::try_from(length).map_err(|_| {
+                                ProtocolError::LocalProtocolError(
+                                    "negative Content-Length".to_string().into(),
+                                )
+                            })?,
+                        ))),
                         "chunked" => Some(Box::new(ChunkedReader::new())),
                         "http/1.0" => Some(Box::new(Http10Reader {})),
-                        _ => {
-                            panic!("Invalid role and framing type combination");
-                        }
+                        _ => return Err(invalid_body_framing(framing_type)),
                     }
                 }
                 _ => match (&self.their_role, self._cstate.states[&self.their_role]) {
@@ -347,6 +372,7 @@ impl Connection {
                 },
             };
         }
+        Ok(())
     }
 
     pub fn get_trailing_data(&self) -> (Vec<u8>, bool) {
@@ -445,29 +471,31 @@ impl Connection {
             event
         };
         let event_type: EventType = (&event).into();
-        let res: Result<Vec<u8>, ProtocolError> = match self._writer.as_mut() {
-            Some(_) if event_type == EventType::ConnectionClosed => Ok(vec![]),
-            Some(writer) => writer(event.clone()),
-            None => Err(ProtocolError::LocalProtocolError(
-                "Can't send data when our state is not SEND_BODY"
-                    .to_string()
-                    .into(),
-            )),
-        };
+        let data = if event_type == EventType::ConnectionClosed {
+            Ok(vec![])
+        } else {
+            match self._writer.as_mut() {
+                Some(writer) => writer(event.clone()),
+                None => Err(ProtocolError::LocalProtocolError(
+                    "Can't send data when our state is not SEND_BODY"
+                        .to_string()
+                        .into(),
+                )),
+            }
+        }
+        .inspect_err(|_| {
+            self._process_error(self.our_role);
+        })?;
+
         if let Err(error) = self._process_event(self.our_role, event.clone()) {
             self._process_error(self.our_role);
             return Err(error);
-        }
+        };
+
         if event_type == EventType::ConnectionClosed {
             return Ok(None);
         } else {
-            match res {
-                Ok(data_list) => Ok(Some(data_list)),
-                Err(error) => {
-                    self._process_error(self.our_role);
-                    Err(error)
-                }
-            }
+            Ok(Some(data))
         }
     }
 
@@ -485,7 +513,7 @@ impl Connection {
         if method_for_choosing_headers == b"HEAD".to_vec() {
             method_for_choosing_headers = b"GET".to_vec();
         }
-        let (framing_type, _) = _body_framing(&method_for_choosing_headers, response.clone());
+        let (framing_type, _) = _body_framing(&method_for_choosing_headers, response.clone())?;
         if framing_type == "chunked" || framing_type == "http/1.0" {
             headers = set_comma_header(&headers, b"content-length", vec![])?;
             if self
@@ -805,7 +833,7 @@ mod tests {
                 (b"GET".to_vec(), resp(204, cl, te)),
                 (b"GET".to_vec(), resp(304, cl, te)),
             ] {
-                assert_eq!(_body_framing(&meth, r), ("content-length", 0));
+                assert_eq!(_body_framing(&meth, r).unwrap(), ("content-length", 0));
             }
         }
 
@@ -815,7 +843,7 @@ mod tests {
                 (b"".to_vec(), RequestOrResponse::from(req(cl, te))),
                 (b"GET".to_vec(), RequestOrResponse::from(resp(200, cl, te))),
             ] {
-                assert_eq!(_body_framing(&meth, r), ("chunked", 0));
+                assert_eq!(_body_framing(&meth, r).unwrap(), ("chunked", 0));
             }
         }
 
@@ -827,15 +855,23 @@ mod tests {
                 RequestOrResponse::from(resp(200, Some(100), false)),
             ),
         ] {
-            assert_eq!(_body_framing(&meth, r), ("content-length", 100));
+            assert_eq!(_body_framing(&meth, r).unwrap(), ("content-length", 100));
         }
 
         // No headers
-        assert_eq!(_body_framing(b"", req(None, false)), ("content-length", 0));
         assert_eq!(
-            _body_framing(b"GET", resp(200, None, false)),
+            _body_framing(b"", req(None, false)).unwrap(),
+            ("content-length", 0)
+        );
+        assert_eq!(
+            _body_framing(b"GET", resp(200, None, false)).unwrap(),
             ("http/1.0", 0)
         );
+
+        assert!(matches!(
+            _body_framing(b"GET", resp(100, None, false)),
+            Err(ProtocolError::LocalProtocolError(_))
+        ));
     }
 
     #[test]
@@ -3548,6 +3584,25 @@ mod tests {
             Err(ProtocolError::LocalProtocolError(_))
         ));
         assert_eq!(c.get_our_state(), State::Error);
+    }
+
+    #[test]
+    fn test_send_serialization_error_marks_our_state_error() {
+        let mut c = Connection::new(Role::Client, None);
+        let bad = Request::new(
+            b"GET",
+            Headers::new([("Host", "example.com")]).unwrap(),
+            b"/",
+            b"1.0",
+        )
+        .unwrap();
+
+        assert!(matches!(
+            c.send(bad.into()),
+            Err(ProtocolError::LocalProtocolError(_))
+        ));
+        assert_eq!(c.get_our_state(), State::Error);
+        assert_ne!(c.get_their_state(), State::Error);
     }
 
     #[test]
