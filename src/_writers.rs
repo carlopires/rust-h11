@@ -1,3 +1,4 @@
+#[rustfmt::skip]
 use crate::{
     Event,
     _events::{Request, Response},
