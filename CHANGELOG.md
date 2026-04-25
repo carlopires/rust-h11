@@ -6,12 +6,13 @@ This project follows semantic versioning once published. While the version is
 `0.y.z`, public API changes can still be breaking, but they should be called
 out explicitly in this file.
 
-## 0.1.1 - Unreleased
+## 0.1.0 - Unreleased
 
-Publish-readiness candidate.
+Initial publish candidate.
 
 ### Added
 
+- `rust-h11` package publishing the `h11` library crate.
 - Sans-I/O HTTP/1.1 connection state machine.
 - Request, response, data, end-of-message, and connection-closed events.
 - Fallible constructors for requests, responses, and headers.
@@ -28,7 +29,3 @@ Publish-readiness candidate.
 - Request-target forms are validated but not classified.
 - Trailer field-specific restrictions are not enforced.
 - Coverage thresholds and scheduled fuzzing are not yet configured.
-
-## 0.1.0
-
-Initial crates.io version.

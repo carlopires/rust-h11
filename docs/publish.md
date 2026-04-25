@@ -52,7 +52,8 @@ Confirm it excludes:
 Before publishing:
 
 - Update `CHANGELOG.md`.
-- Confirm `Cargo.toml` version and `PRODUCT_ID` version are intentional.
+- Confirm `Cargo.toml` package name, library name, version, and `PRODUCT_ID`
+  version are intentional.
 - Confirm `rust-version` matches CI and the MSRV policy.
 - Confirm docs.rs metadata, repository, license, keywords, and categories are
   accurate.

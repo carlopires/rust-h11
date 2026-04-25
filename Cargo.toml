@@ -1,17 +1,20 @@
 [package]
-name = "h11"
-version = "0.1.1"
+name = "rust-h11"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.94.1"
 description = "A pure-Rust, bring-your-own-I/O implementation of HTTP/1.1"
 license = "Apache-2.0"
 repository = "https://github.com/carlopires/rust-h11"
 homepage = "https://github.com/carlopires/rust-h11"
-documentation = "https://docs.rs/h11"
+documentation = "https://docs.rs/rust-h11"
 readme = "README.md"
 keywords = ["http", "http1", "sans-io", "parser"]
 categories = ["network-programming", "parser-implementations"]
 exclude = ["fuzz/"]
+
+[lib]
+name = "h11"
 
 [dependencies]
 lazy_static = "1.4.0"
