@@ -101,12 +101,12 @@ Statuses:
 | Extensive API documentation | partial | Public rustdoc and a user guide cover the exported API surface and common flows; more specialized cookbook examples are still missing. |
 | Exhaustive test suite / coverage target | partial | Unit and integration tests exist; no coverage target or branch coverage gate. |
 | Fuzzing infrastructure | partial | cargo-fuzz harnesses and seed corpora exist; scheduled runs and crash regression promotion are still missing. |
-| Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons cover core flows, malformed start lines, pipelining, `100-continue`, CONNECT, and Upgrade. Broader generated and minimized fixtures are still missing. |
+| Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons cover core flows, malformed start lines, pipelining, `100-continue`, CONNECT, Upgrade, malformed chunks, and EOF during bodies. Broader generated and minimized fixtures are still missing. |
 | No runtime dependencies outside standard library | partial | Runtime depends on `lazy_static` and `regex`. Decide whether to keep or replace with byte parsers. |
 
 ## Initial Implementation Backlog
 
-1. Add generated/minimized Python h11 fixtures for additional malformed body and EOF cases.
-2. Decide whether `PRODUCT_ID` belongs in the Rust public API.
-3. Benchmark parser hot paths before replacing regex-based parsing.
-4. Add specialized cookbook examples as API gaps are resolved.
+1. Decide whether `PRODUCT_ID` belongs in the Rust public API.
+2. Benchmark parser hot paths before replacing regex-based parsing.
+3. Add specialized cookbook examples as API gaps are resolved.
+4. Add generated/minimized Python h11 fixtures as new malformed cases are found.

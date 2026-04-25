@@ -135,6 +135,56 @@ CASES = [
         "role": "CLIENT",
         "chunks": [b"HTTP/1.1 OK\r\n\r\n"],
     },
+    {
+        "name": "server_incomplete_content_length_eof",
+        "role": "SERVER",
+        "chunks": [
+            b"POST /upload HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Content-Length: 5\r\n"
+            b"\r\n"
+            b"he",
+            b"",
+        ],
+    },
+    {
+        "name": "client_incomplete_content_length_eof",
+        "role": "CLIENT",
+        "chunks": [b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhe", b""],
+    },
+    {
+        "name": "server_malformed_chunk_size",
+        "role": "SERVER",
+        "chunks": [
+            b"POST /upload HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Transfer-Encoding: chunked\r\n"
+            b"\r\n"
+            b"z\r\n"
+        ],
+    },
+    {
+        "name": "client_malformed_chunk_size",
+        "role": "CLIENT",
+        "chunks": [b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nz\r\n"],
+    },
+    {
+        "name": "server_incomplete_chunked_eof",
+        "role": "SERVER",
+        "chunks": [
+            b"POST /upload HTTP/1.1\r\n"
+            b"Host: example.com\r\n"
+            b"Transfer-Encoding: chunked\r\n"
+            b"\r\n"
+            b"5\r\nhe",
+            b"",
+        ],
+    },
+    {
+        "name": "client_incomplete_chunked_eof",
+        "role": "CLIENT",
+        "chunks": [b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhe", b""],
+    },
 ]
 
 
