@@ -36,7 +36,7 @@ semantics belong outside this crate or in RFC 9110.
 | 9.3.2 | Pipelining | covered | `_connection::tests::test_pipelining`, `_connection::tests::test_pipelined_close` | Preserves trailing pipelined bytes and pauses until the next cycle. |
 | 9.7 | TLS connection initiation | out-of-scope | none | TLS belongs to the caller's transport layer. |
 | 9.8 | TLS connection closure | out-of-scope | none | TLS shutdown belongs to the caller's transport layer. |
-| 11 | Security considerations | partial | `_connection::tests::test_max_incomplete_event_size_countermeasure`, `_headers::tests::test_normalize_and_validate`, fuzz targets under `fuzz/` | Buffer caps and framing-conflict rejection exist; fuzz corpora and smuggling fixtures should expand. |
+| 11 | Security considerations | partial | `_connection::tests::test_max_incomplete_event_size_countermeasure`, `_headers::tests::test_normalize_and_validate`, fuzz targets and seed corpora under `fuzz/` | Buffer caps, framing-conflict rejection, and fuzz seeds exist. Regular fuzz runs and regression promotion are still needed. |
 
 ## Not Covered
 
@@ -56,6 +56,8 @@ semantics belong outside this crate or in RFC 9110.
 - Run cargo-fuzz targets before releases and after parser/state-machine changes:
   `cargo fuzz run parse_request_stream` and
   `cargo fuzz run parse_response_stream`.
-- Add corpus fixtures for known request-smuggling and response-splitting cases.
+- Expand the fuzz corpora as new request-smuggling, response-splitting, chunk,
+  obs-fold, and EOF cases are found.
+- Promote minimized fuzz crashes into regression tests.
 - Expand this checklist as behavior is reviewed against RFC 9112 section by
   section.

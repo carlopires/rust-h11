@@ -100,7 +100,7 @@ Statuses:
 | --- | --- | --- |
 | Extensive API documentation | missing | README has a basic example; rustdoc coverage is minimal. |
 | Exhaustive test suite / coverage target | partial | Unit and integration tests exist; no coverage target or branch coverage gate. |
-| Fuzzing infrastructure | partial | cargo-fuzz harnesses exist; corpora and scheduled runs are still missing. |
+| Fuzzing infrastructure | partial | cargo-fuzz harnesses and seed corpora exist; scheduled runs and crash regression promotion are still missing. |
 | Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons exist for core request/response flows. Broader generated fixtures are still missing. |
 | No runtime dependencies outside standard library | partial | Runtime depends on `lazy_static` and `regex`. Decide whether to keep or replace with byte parsers. |
 
@@ -108,7 +108,6 @@ Statuses:
 
 1. Add public rustdoc for every exported type and method.
 2. Expand Python h11 fixtures to cover malformed inputs, pipelining, `100-continue`, CONNECT, and Upgrade.
-3. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
-4. Audit remaining public panic paths and convert them to protocol errors.
-5. Decide whether `PRODUCT_ID` belongs in the Rust public API.
-6. Benchmark parser hot paths before replacing regex-based parsing.
+3. Audit remaining public panic paths and convert them to protocol errors.
+4. Decide whether `PRODUCT_ID` belongs in the Rust public API.
+5. Benchmark parser hot paths before replacing regex-based parsing.
