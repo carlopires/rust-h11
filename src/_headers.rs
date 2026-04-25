@@ -22,8 +22,8 @@ impl std::fmt::Debug for Headers {
         let mut debug_struct = f.debug_struct("Headers");
         self.0.iter().for_each(|(raw_name, _, value)| {
             debug_struct.field(
-                std::str::from_utf8(raw_name).unwrap(),
-                &std::str::from_utf8(value).unwrap(),
+                &String::from_utf8_lossy(raw_name),
+                &String::from_utf8_lossy(value),
             );
         });
         debug_struct.finish()
@@ -44,11 +44,20 @@ impl Headers {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn new(headers: Vec<(Vec<u8>, Vec<u8>)>) -> Result<Self, ProtocolError> {
+        normalize_and_validate(headers, false)
+    }
 }
 
 impl From<Vec<(Vec<u8>, Vec<u8>)>> for Headers {
     fn from(value: Vec<(Vec<u8>, Vec<u8>)>) -> Self {
-        normalize_and_validate(value, false).unwrap()
+        Headers::new(value)
+            .expect("invalid HTTP header list; use Headers::new for fallible construction")
     }
 }
 
@@ -179,6 +188,11 @@ pub fn has_expect_100_continue(request: &Request) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_headers_new_rejects_invalid_input() {
+        assert!(Headers::new(vec![(b"bad header".to_vec(), b"value".to_vec())]).is_err());
+    }
 
     #[test]
     fn test_normalize_and_validate() {
