@@ -101,13 +101,13 @@ Statuses:
 | Extensive API documentation | missing | README has a basic example; rustdoc coverage is minimal. |
 | Exhaustive test suite / coverage target | partial | Unit and integration tests exist; no coverage target or branch coverage gate. |
 | Fuzzing infrastructure | partial | cargo-fuzz harnesses exist; corpora and scheduled runs are still missing. |
-| Differential behavior confidence | partial | `httparse` differential tests exist; Python h11 differential fixtures are missing. |
+| Differential behavior confidence | partial | `httparse` differential tests and pinned Python h11 JSON fixture comparisons exist for core request/response flows. Broader generated fixtures are still missing. |
 | No runtime dependencies outside standard library | partial | Runtime depends on `lazy_static` and `regex`. Decide whether to keep or replace with byte parsers. |
 
 ## Initial Implementation Backlog
 
 1. Add public rustdoc for every exported type and method.
-2. Add Python h11 fixture generator and JSON event comparison tests.
+2. Expand Python h11 fixtures to cover malformed inputs, pipelining, `100-continue`, CONNECT, and Upgrade.
 3. Expand RFC 9112 compliance notes into a section-by-section table.
 4. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
 5. Audit remaining public panic paths and convert them to protocol errors.

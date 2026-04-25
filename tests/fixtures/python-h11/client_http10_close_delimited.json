@@ -1,0 +1,31 @@
+{
+  "chunks_hex": [
+    "485454502f312e3020323030204f4b0d0a0d0a68656c6c6f",
+    ""
+  ],
+  "events": [
+    {
+      "headers": [],
+      "http_version_hex": "312e30",
+      "reason_hex": "4f4b",
+      "status_code": 200,
+      "type": "NormalResponse"
+    },
+    {
+      "chunk_end": false,
+      "chunk_start": false,
+      "data_hex": "68656c6c6f",
+      "type": "Data"
+    },
+    {
+      "headers": [],
+      "type": "EndOfMessage"
+    },
+    {
+      "type": "ConnectionClosed"
+    }
+  ],
+  "name": "client_http10_close_delimited",
+  "python_h11_version": "0.16.0",
+  "role": "CLIENT"
+}

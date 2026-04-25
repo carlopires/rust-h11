@@ -16,3 +16,4 @@ regex = "1.10.2"
 
 [dev-dependencies]
 httparse = "1.10.1"
+serde_json = "1.0.116"
