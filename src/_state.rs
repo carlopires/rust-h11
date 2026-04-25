@@ -3,46 +3,75 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
+/// Endpoint role for a connection.
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum Role {
+    /// HTTP client side.
     Client,
+    /// HTTP server side.
     Server,
 }
 
+/// Per-role state in the HTTP/1.1 connection state machine.
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum State {
+    /// Ready to start a new request/response cycle.
     Idle,
+    /// Server is expected to send a response head.
     SendResponse,
+    /// Body data may be sent.
     SendBody,
+    /// Message for this role is complete.
     Done,
+    /// Role is complete and the connection must close.
     MustClose,
+    /// Role has closed.
     Closed,
+    /// Protocol error state.
     Error,
+    /// Client proposed a protocol switch and is waiting for the response.
     MightSwitchProtocol,
+    /// Protocol has switched away from HTTP/1.1.
     SwitchedProtocol,
 }
 
+/// Protocol switch proposals and acceptances.
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum Switch {
+    /// HTTP Upgrade switch.
     SwitchUpgrade,
+    /// CONNECT tunnel switch.
     SwitchConnect,
+    /// Client switch proposal marker.
     Client,
 }
 
+/// Internal event classification used by the state machine.
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum EventType {
+    /// Request head.
     Request,
+    /// Informational response head.
     InformationalResponse,
+    /// Final response head.
     NormalResponse,
+    /// Body data.
     Data,
+    /// End of message.
     EndOfMessage,
+    /// Connection close.
     ConnectionClosed,
+    /// Need more inbound data.
     NeedData,
+    /// Inbound events are paused.
     Paused,
     // Combination of EventType and Sentinel
-    RequestClient,                      // (Request, Switch::Client)
+    /// Request plus client switch proposal.
+    RequestClient, // (Request, Switch::Client)
+    /// Informational response accepting an Upgrade switch.
     InformationalResponseSwitchUpgrade, // (InformationalResponse, Switch::SwitchUpgrade)
-    NormalResponseSwitchConnect,        // (NormalResponse, Switch::SwitchConnect)
+    /// Final response accepting a CONNECT switch.
+    NormalResponseSwitchConnect, // (NormalResponse, Switch::SwitchConnect)
 }
 
 impl From<&Event> for EventType {

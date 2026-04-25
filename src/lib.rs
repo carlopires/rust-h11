@@ -1,3 +1,21 @@
+//! Sans-I/O HTTP/1.1 protocol handling.
+//!
+//! This crate parses and serializes HTTP/1.1 events without owning sockets,
+//! timers, or tasks. Applications feed bytes into a [`Connection`] with
+//! [`Connection::receive_data`], pull protocol events with
+//! [`Connection::next_event`], and serialize outbound events with
+//! [`Connection::send`].
+//!
+//! The API follows the same model as Python h11: callers drive a state machine
+//! by exchanging typed events such as [`Request`], [`Response`], [`Data`], and
+//! [`EndOfMessage`]. Invalid local usage returns [`LocalProtocolError`], while
+//! malformed peer input returns [`RemoteProtocolError`].
+//!
+//! Use the fallible constructors such as [`Request::new_http11`],
+//! [`Response::new_final_http11`], and [`Headers::new`] for public inputs.
+//! Struct fields are currently public for compatibility, but manually-built
+//! values should be validated before being sent.
+
 #![allow(
     clippy::byte_char_slices,
     clippy::collapsible_if,
