@@ -56,3 +56,11 @@ fn main() -> Result<(), h11::ProtocolError> {
     Ok(())
 }
 ```
+
+## Development
+
+Run parser and serializer benchmarks before changing parsing internals:
+
+```bash
+cargo bench --bench parser
+```
