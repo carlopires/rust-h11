@@ -1,0 +1,26 @@
+{
+  "chunks_hex": [
+    "485454502f312e3120323030204f4b0d0a5472616e736665722d456e636f64696e673a206368756e6b65640d0a0d0a7a0d0a"
+  ],
+  "events": [
+    {
+      "headers": [
+        {
+          "name_hex": "5472616e736665722d456e636f64696e67",
+          "value_hex": "6368756e6b6564"
+        }
+      ],
+      "http_version_hex": "312e31",
+      "reason_hex": "4f4b",
+      "status_code": 200,
+      "type": "NormalResponse"
+    },
+    {
+      "code": 400,
+      "type": "RemoteProtocolError"
+    }
+  ],
+  "name": "client_malformed_chunk_size",
+  "python_h11_version": "0.16.0",
+  "role": "CLIENT"
+}
