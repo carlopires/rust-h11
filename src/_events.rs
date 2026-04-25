@@ -138,6 +138,70 @@ impl Response {
         Self::new(status_code, headers, reason, b"1.1")
     }
 
+    pub fn new_informational<R, V>(
+        status_code: u16,
+        headers: Headers,
+        reason: R,
+        http_version: V,
+    ) -> Result<Self, ProtocolError>
+    where
+        R: AsRef<[u8]>,
+        V: AsRef<[u8]>,
+    {
+        let response = Self::new(status_code, headers, reason, http_version)?;
+        if !(100..=199).contains(&response.status_code) {
+            return Err(ProtocolError::LocalProtocolError(
+                (
+                    "Informational responses must use status codes in the range 100..=199",
+                    400,
+                )
+                    .into(),
+            ));
+        }
+        Ok(response)
+    }
+
+    pub fn new_informational_http11<R>(
+        status_code: u16,
+        headers: Headers,
+        reason: R,
+    ) -> Result<Self, ProtocolError>
+    where
+        R: AsRef<[u8]>,
+    {
+        Self::new_informational(status_code, headers, reason, b"1.1")
+    }
+
+    pub fn new_final<R, V>(
+        status_code: u16,
+        headers: Headers,
+        reason: R,
+        http_version: V,
+    ) -> Result<Self, ProtocolError>
+    where
+        R: AsRef<[u8]>,
+        V: AsRef<[u8]>,
+    {
+        let response = Self::new(status_code, headers, reason, http_version)?;
+        if response.status_code < 200 {
+            return Err(ProtocolError::LocalProtocolError(
+                ("Final responses must use status codes >= 200", 400).into(),
+            ));
+        }
+        Ok(response)
+    }
+
+    pub fn new_final_http11<R>(
+        status_code: u16,
+        headers: Headers,
+        reason: R,
+    ) -> Result<Self, ProtocolError>
+    where
+        R: AsRef<[u8]>,
+    {
+        Self::new_final(status_code, headers, reason, b"1.1")
+    }
+
     pub fn validate(&self) -> Result<(), ProtocolError> {
         if !(100..=999).contains(&self.status_code) {
             return Err(ProtocolError::LocalProtocolError(
@@ -197,6 +261,32 @@ impl From<Response> for Event {
             100..=199 => Self::InformationalResponse(response),
             _ => Self::NormalResponse(response),
         }
+    }
+}
+
+impl Event {
+    pub fn informational_response(response: Response) -> Result<Self, ProtocolError> {
+        if !(100..=199).contains(&response.status_code) {
+            return Err(ProtocolError::LocalProtocolError(
+                (
+                    "Informational responses must use status codes in the range 100..=199",
+                    400,
+                )
+                    .into(),
+            ));
+        }
+        response.validate()?;
+        Ok(Self::InformationalResponse(response))
+    }
+
+    pub fn normal_response(response: Response) -> Result<Self, ProtocolError> {
+        if response.status_code < 200 {
+            return Err(ProtocolError::LocalProtocolError(
+                ("Normal responses must use status codes >= 200", 400).into(),
+            ));
+        }
+        response.validate()?;
+        Ok(Self::NormalResponse(response))
     }
 }
 
@@ -273,5 +363,43 @@ mod tests {
         assert_eq!(response.status_code, 200);
         assert_eq!(response.reason, b"OK");
         assert_eq!(response.http_version, b"1.1");
+    }
+
+    #[test]
+    fn test_response_range_checked_constructors() {
+        let informational =
+            Response::new_informational_http11(100, Headers::default(), "Continue").unwrap();
+        assert_eq!(informational.status_code, 100);
+
+        let final_response = Response::new_final_http11(200, Headers::default(), "OK").unwrap();
+        assert_eq!(final_response.status_code, 200);
+
+        assert!(Response::new_informational_http11(200, Headers::default(), "OK").is_err());
+        assert!(Response::new_final_http11(199, Headers::default(), "Early").is_err());
+    }
+
+    #[test]
+    fn test_event_response_constructors_validate_status_ranges() {
+        let informational =
+            Response::new_informational_http11(100, Headers::default(), "Continue").unwrap();
+        assert!(matches!(
+            Event::informational_response(informational).unwrap(),
+            Event::InformationalResponse(_)
+        ));
+
+        let final_response =
+            Response::new_final_http11(204, Headers::default(), "No Content").unwrap();
+        assert!(matches!(
+            Event::normal_response(final_response).unwrap(),
+            Event::NormalResponse(_)
+        ));
+
+        let informational =
+            Response::new_informational_http11(101, Headers::default(), "Switching Protocols")
+                .unwrap();
+        assert!(Event::normal_response(informational).is_err());
+
+        let final_response = Response::new_final_http11(200, Headers::default(), "OK").unwrap();
+        assert!(Event::informational_response(final_response).is_err());
     }
 }

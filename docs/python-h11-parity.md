@@ -19,8 +19,8 @@ Statuses:
 | --- | --- | --- | --- |
 | `Connection` | `Connection` | partial | Core send/receive/state behavior exists. Rust API returns `Option<Vec<u8>>` from `send`; Python supports additional send ergonomics such as `combine`. |
 | `Request` | `Request` | partial | Fallible constructor accepts borrowed byte-like values. `new_http11` provides the common HTTP/1.1 default; Rust still uses positional arguments instead of Python keyword-only construction. |
-| `InformationalResponse` | `Event::InformationalResponse(Response)` | partial | Represented as an enum variant, not a separate public event type with range-specific construction. |
-| `Response` | `Response` / `Event::NormalResponse` | partial | Fallible constructor accepts borrowed byte-like values and `new_http11` provides the common HTTP/1.1 default, but final-response range is not separated at the type level. |
+| `InformationalResponse` | `Event::InformationalResponse(Response)` | partial | Represented as an enum variant. `Response::new_informational*` and `Event::informational_response` provide range-checked construction. |
+| `Response` | `Response` / `Event::NormalResponse` | partial | Fallible constructor accepts borrowed byte-like values. `Response::new_final*` and `Event::normal_response` provide final-response range checks, but final responses are not separated as a distinct Rust type. |
 | `Data` | `Data` | partial | Basic body chunks exist. Python supports sendfile-oriented data objects via `combine=False`; Rust currently requires owned `Vec<u8>`. |
 | `EndOfMessage` | `EndOfMessage` | same | End event and trailer headers exist. |
 | `ConnectionClosed` | `ConnectionClosed` | same | Close event exists. |
@@ -76,7 +76,7 @@ Statuses:
 | Preserve raw header casing while exposing lowercase lookup names | same | Implemented by `Headers`. |
 | Reject leading/trailing whitespace in header names | same | Implemented by validation. |
 | Reject invalid `Content-Length` and conflicting duplicates | same | Implemented by validation. |
-| Distinguish informational vs final response construction | partial | Current `From<Response> for Event` chooses variant by status code; no separate type-level range enforcement. |
+| Distinguish informational vs final response construction | partial | Range-checked constructors exist for informational and final responses. `Response` remains a shared struct for compatibility. |
 
 ## Protocol Behavior
 
@@ -107,10 +107,9 @@ Statuses:
 ## Initial Implementation Backlog
 
 1. Add public rustdoc for every exported type and method.
-2. Add explicit constructors for informational and final responses.
-3. Add Python h11 fixture generator and JSON event comparison tests.
-4. Expand RFC 9112 compliance notes into a section-by-section table.
-5. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
-6. Audit remaining public panic paths and convert them to protocol errors.
-7. Decide whether `PRODUCT_ID` belongs in the Rust public API.
-8. Benchmark parser hot paths before replacing regex-based parsing.
+2. Add Python h11 fixture generator and JSON event comparison tests.
+3. Expand RFC 9112 compliance notes into a section-by-section table.
+4. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
+5. Audit remaining public panic paths and convert them to protocol errors.
+6. Decide whether `PRODUCT_ID` belongs in the Rust public API.
+7. Benchmark parser hot paths before replacing regex-based parsing.
