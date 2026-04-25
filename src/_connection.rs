@@ -356,10 +356,12 @@ impl Connection {
         )
     }
 
-    pub fn receive_data(&mut self, data: &[u8]) -> Result<(), String> {
+    pub fn receive_data(&mut self, data: &[u8]) -> Result<(), ProtocolError> {
         Ok(if data.len() > 0 {
             if self._receive_buffer_closed {
-                return Err("received close, then received more data?".to_string());
+                return Err(ProtocolError::LocalProtocolError(
+                    "received close, then received more data?".into(),
+                ));
             }
             self._receive_buffer.add(data);
         } else {
@@ -452,7 +454,10 @@ impl Connection {
                     .into(),
             )),
         };
-        self._process_event(self.our_role, event.clone())?;
+        if let Err(error) = self._process_event(self.our_role, event.clone()) {
+            self._process_error(self.our_role);
+            return Err(error);
+        }
         if event_type == EventType::ConnectionClosed {
             return Ok(None);
         } else {
@@ -3530,6 +3535,29 @@ mod tests {
             assert_eq!(c.get_our_state(), State::Error);
             assert_ne!(c.get_their_state(), State::Error);
         }
+    }
+
+    #[test]
+    fn test_send_wrong_event_type_returns_error_without_panic() {
+        let mut c = Connection::new(Role::Client, None);
+        assert!(matches!(
+            c.send(Event::Data(Data {
+                data: b"unexpected".to_vec(),
+                ..Default::default()
+            })),
+            Err(ProtocolError::LocalProtocolError(_))
+        ));
+        assert_eq!(c.get_our_state(), State::Error);
+    }
+
+    #[test]
+    fn test_receive_data_after_eof_uses_protocol_error() {
+        let mut c = Connection::new(Role::Server, None);
+        c.receive_data(b"").unwrap();
+        assert!(matches!(
+            c.receive_data(b"extra"),
+            Err(ProtocolError::LocalProtocolError(_))
+        ));
     }
 
     // def test_idle_receive_nothing() -> None:

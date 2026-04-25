@@ -167,12 +167,12 @@ impl Reader for SendResponseServerReader {
         };
         let headers = normalize_and_validate(_decode_header_lines(lines[1..].to_vec())?, true)?;
 
-        return Ok(Some(Event::from(Response {
-            headers,
-            http_version,
-            reason,
+        return Ok(Some(Event::from(Response::new(
             status_code,
-        })));
+            headers,
+            reason,
+            http_version,
+        )?)));
     }
 }
 

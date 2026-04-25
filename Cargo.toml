@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "A pure-Rust, bring-your-own-I/O implementation of HTTP/1.1"
 license = "Apache-2.0"
+repository = "https://github.com/carlopires/rust-h11"
+homepage = "https://github.com/carlopires/rust-h11"
+documentation = "https://docs.rs/h11"
+readme = "README.md"
 
 [dependencies]
 lazy_static = "1.4.0"
