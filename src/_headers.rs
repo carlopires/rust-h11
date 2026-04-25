@@ -117,14 +117,14 @@ pub fn normalize_and_validate(
             // "A server that receives a request message with a transfer coding
             // it does not understand SHOULD respond with 501 (Not
             // Implemented)."
-            // https://tools.ietf.org/html/rfc7230#section-3.3.1
+            // https://www.rfc-editor.org/rfc/rfc9112.html#section-6.1
             if saw_transfer_encoding {
                 return Err(ProtocolError::LocalProtocolError(
                     ("multiple Transfer-Encoding headers", 501).into(),
                 ));
             }
             // "All transfer-coding names are case-insensitive"
-            // -- https://tools.ietf.org/html/rfc7230#section-4
+            // -- https://www.rfc-editor.org/rfc/rfc9112.html#section-7
             let value = value.to_ascii_lowercase();
             if value != b"chunked" {
                 return Err(ProtocolError::LocalProtocolError(
@@ -175,7 +175,7 @@ pub fn set_comma_header(
 }
 
 pub fn has_expect_100_continue(request: &Request) -> bool {
-    // https://tools.ietf.org/html/rfc7231#section-5.1.1
+    // https://www.rfc-editor.org/rfc/rfc9110.html#section-10.1.1
     // "A server that receives a 100-continue expectation in an HTTP/1.0 request
     // MUST ignore that expectation."
     if request.http_version < b"1.1".to_vec() {

@@ -1,0 +1,26 @@
+[package]
+name = "h11-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+h11 = { path = ".." }
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "parse_request_stream"
+path = "fuzz_targets/parse_request_stream.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_response_stream"
+path = "fuzz_targets/parse_response_stream.rs"
+test = false
+doc = false
+bench = false
