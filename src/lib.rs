@@ -50,3 +50,22 @@ pub use _events::{ConnectionClosed, Data, EndOfMessage, Event, Request, Response
 pub use _headers::Headers;
 pub use _state::{EventType, Role, State, Switch};
 pub use _util::{LocalProtocolError, ProtocolError, RemoteProtocolError};
+
+/// Product token for identifying this protocol implementation.
+///
+/// This is intended for callers that want a default `User-Agent` or `Server`
+/// header value. The crate never injects it automatically.
+pub const PRODUCT_ID: &str = concat!("rust-h11/", env!("CARGO_PKG_VERSION"));
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn product_id_tracks_crate_version() {
+        assert_eq!(
+            PRODUCT_ID,
+            format!("rust-h11/{}", env!("CARGO_PKG_VERSION"))
+        );
+    }
+}
