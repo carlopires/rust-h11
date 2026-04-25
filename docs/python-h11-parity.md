@@ -108,8 +108,7 @@ Statuses:
 
 1. Add public rustdoc for every exported type and method.
 2. Expand Python h11 fixtures to cover malformed inputs, pipelining, `100-continue`, CONNECT, and Upgrade.
-3. Expand RFC 9112 compliance notes into a section-by-section table.
-4. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
-5. Audit remaining public panic paths and convert them to protocol errors.
-6. Decide whether `PRODUCT_ID` belongs in the Rust public API.
-7. Benchmark parser hot paths before replacing regex-based parsing.
+3. Add fuzz corpus seeds for smuggling, splitting, chunk, obs-fold, and EOF cases.
+4. Audit remaining public panic paths and convert them to protocol errors.
+5. Decide whether `PRODUCT_ID` belongs in the Rust public API.
+6. Benchmark parser hot paths before replacing regex-based parsing.
