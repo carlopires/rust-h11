@@ -64,3 +64,5 @@ Run parser and serializer benchmarks before changing parsing internals:
 ```bash
 cargo bench --bench parser
 ```
+
+See [performance baselines](docs/performance.md) for comparison guidance.
